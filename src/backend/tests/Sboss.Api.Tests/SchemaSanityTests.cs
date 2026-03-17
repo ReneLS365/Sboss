@@ -5,7 +5,7 @@ public sealed class SchemaSanityTests
     [Fact]
     public void SchemaContainsRequiredTables()
     {
-        var schemaPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../db/schema.sql"));
+        var schemaPath = ResolveSchemaPath();
         var schema = File.ReadAllText(schemaPath);
 
         var requiredTables = new[]
@@ -23,5 +23,23 @@ public sealed class SchemaSanityTests
         {
             Assert.Contains($"CREATE TABLE IF NOT EXISTS {table}", schema, StringComparison.OrdinalIgnoreCase);
         }
+    }
+
+    private static string ResolveSchemaPath()
+    {
+        var current = new DirectoryInfo(AppContext.BaseDirectory);
+
+        while (current is not null)
+        {
+            var candidate = Path.Combine(current.FullName, "db", "schema.sql");
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+
+            current = current.Parent;
+        }
+
+        throw new FileNotFoundException("Unable to locate db/schema.sql by traversing parent directories.");
     }
 }

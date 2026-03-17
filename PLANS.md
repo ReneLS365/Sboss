@@ -50,3 +50,6 @@
 - [x] Local validation commands executed
 - [x] Commit created
 - [x] Draft PR prepared
+
+## Follow-up Tasks
+- [ ] PR #1 review fix: correct `SchemaSanityTests` schema path resolution to target `src/backend/db/schema.sql` from test output directory.
