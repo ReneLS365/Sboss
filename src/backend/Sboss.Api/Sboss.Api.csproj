@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <RootNamespace>Sboss.Api</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Sboss.Contracts\Sboss.Contracts.csproj" />
+    <ProjectReference Include="..\Sboss.Domain\Sboss.Domain.csproj" />
+    <ProjectReference Include="..\Sboss.Infrastructure\Sboss.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>

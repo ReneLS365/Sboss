@@ -1,0 +1,18 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: sboss-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-sboss}
+      POSTGRES_USER: ${POSTGRES_USER:-sboss}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sboss_dev_password}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - sboss_postgres_data:/var/lib/postgresql/data
+      - ./src/backend/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./src/backend/db/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+
+volumes:
+  sboss_postgres_data:

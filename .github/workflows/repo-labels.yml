@@ -1,0 +1,30 @@
+name: repo-labels
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sync-labels:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply labels from manifest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          jq -c '.[]' .github/repo-labels.json | while read -r label; do
+            name=$(echo "$label" | jq -r '.name')
+            color=$(echo "$label" | jq -r '.color')
+            description=$(echo "$label" | jq -r '.description')
+            curl -sS -X POST \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/$REPO/labels" \
+              -d "{\"name\":\"$name\",\"color\":\"$color\",\"description\":\"$description\"}" || true
+            curl -sS -X PATCH \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/$REPO/labels/$name" \
+              -d "{\"new_name\":\"$name\",\"color\":\"$color\",\"description\":\"$description\"}"
+          done
