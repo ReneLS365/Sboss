@@ -7,8 +7,7 @@ on:
   pull_request:
 
 jobs:
-  backend_build_test_unique:
-    name: backend-build-test-unique
+  build-test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
