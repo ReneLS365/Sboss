@@ -3,6 +3,9 @@
     <RootNamespace>Sboss.Api</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\Sboss.Contracts\Sboss.Contracts.csproj" />
     <ProjectReference Include="..\Sboss.Domain\Sboss.Domain.csproj" />
     <ProjectReference Include="..\Sboss.Infrastructure\Sboss.Infrastructure.csproj" />

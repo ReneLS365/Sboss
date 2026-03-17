@@ -52,4 +52,32 @@
 - [x] Draft PR prepared
 
 ## Follow-up Tasks
-- [ ] PR #1 review fix: correct `SchemaSanityTests` schema path resolution to target `src/backend/db/schema.sql` from test output directory.
+- [x] PR #1 review fix: correct `SchemaSanityTests` schema path resolution to target `src/backend/db/schema.sql` from test output directory.
+
+
+## Phase 0 Repair (PR #1 Green Checks)
+- **task:** Targeted repair to make PR #1 pass all required checks.
+- **scope_lock:** Fase 0 only; no new features or architecture changes.
+- **suspected_root_causes:**
+  - Missing package references causing backend compile failures in CI.
+  - Schema sanity path fragility from test output directory.
+  - CI workflow must keep restore/build/test order and avoid non-essential blocking workflows.
+- **acceptance_for_repair:**
+  - `dotnet restore Sboss.sln` succeeds.
+  - `dotnet build Sboss.sln --configuration Release` succeeds.
+  - `dotnet test Sboss.sln --configuration Release` succeeds.
+  - Backend CI workflow remains valid for PR execution path.
+- **root_cause_summary:**
+  - `Sboss.Infrastructure` lacked explicit abstractions package references for `IServiceCollection`/`IConfiguration` extension signatures in CI compile context.
+  - `Sboss.Api` lacked explicit Swagger package reference for `AddSwaggerGen`/`UseSwagger` extension methods.
+  - `SchemaSanityTests` used a fragile relative path from test output layout.
+- **files_touched_for_repair:**
+  - `PLANS.md`
+  - `src/backend/Sboss.Infrastructure/Sboss.Infrastructure.csproj`
+  - `src/backend/Sboss.Api/Sboss.Api.csproj`
+  - `src/backend/tests/Sboss.Api.Tests/SchemaSanityTests.cs`
+- **status_after_fix:**
+  - restore/build/test commands run successfully in Release configuration.
+  - targeted repair stayed within Fase 0 scope with no feature expansion.
+- **fase_0_exit_note:**
+  - Fase 0 exit criteria are satisfied for PR #1 repair path: backend compiles, tests pass, workflow path is valid.
