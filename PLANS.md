@@ -53,6 +53,7 @@
 
 ## Follow-up Tasks
 - [x] PR #1 review fix: correct `SchemaSanityTests` schema path resolution to target `src/backend/db/schema.sql` from test output directory.
+- [x] PR #1 review fix: ensure `GET /api/v1/level-seeds/{seedId}` returns `404` for unknown IDs in Phase 0 in-memory repository.
 
 
 ## Phase 0 Repair (PR #1 Green Checks)
@@ -79,5 +80,6 @@
 - **status_after_fix:**
   - restore/build/test commands run successfully in Release configuration.
   - targeted repair stayed within Fase 0 scope with no feature expansion.
+  - level-seed endpoint now preserves documented `404` path for unknown IDs and is covered by a stable API test.
 - **fase_0_exit_note:**
   - Fase 0 exit criteria are satisfied for PR #1 repair path: backend compiles, tests pass, workflow path is valid.
