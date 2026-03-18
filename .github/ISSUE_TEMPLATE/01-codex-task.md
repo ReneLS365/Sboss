@@ -1,42 +1,39 @@
 ---
 name: Codex Task
-about: Define a scoped Codex-executable repository task
-title: "[codex] "
-labels: ["codex", "needs-triage"]
+about: Define a scoped task for Codex execution
+title: ""
+labels: []
 assignees: []
 ---
 
-## Goal
-- 
+# Title
+`<concise task title>`
 
-## Phase Check
+# Goal
+`<what this task should achieve>`
+
+# Phase Check
 - Current phase from `docs/MASTER_STATUS.md`:
-- Next task from `docs/MASTER_STATUS.md`:
-- Why this task belongs in the current phase:
+- Next planned task from `docs/MASTER_STATUS.md`:
+- Why this task is allowed in the current phase:
 
-## Scope
-- In scope:
-  - 
-- Out of scope:
-  - 
+# Allowed Files
+- `<required file/path>`
+- `<required file/path>`
 
-## Allowed Files
-- `path/to/file`
+# Forbidden Files
+- Replace this list with task-specific forbidden paths before assigning the task.
+- Add only the paths that are intentionally out of scope for the current task.
+- Do not keep repository-default forbidden globs in this template.
 
-## Forbidden Files
-- `src/**`
-- `tests/**`
-- `.github/workflows/**`
+# Acceptance Criteria
+- `<measurable outcome>`
+- `<measurable outcome>`
 
-## Acceptance Criteria
-- [ ] Criterion 1
-- [ ] Criterion 2
+# Validation
+- `<command or manual check>`
+- `<command or manual check>`
 
-## Validation
-- Commands:
-  - `command here`
-- Manual checks:
-  - Confirm GitHub Markdown rendering
-
-## Notes
-- Add architectural constraints, review risks, or dependency notes.
+# Author Checklist
+- Confirm the forbidden paths are specific to this task.
+- Remove any copied defaults that would block valid implementation scope for the assigned phase.
