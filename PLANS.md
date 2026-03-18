@@ -97,3 +97,21 @@
   - level-seed endpoint now preserves documented `404` path for unknown IDs and is covered by a stable API test.
 - **fase_0_exit_note:**
   - Fase 0 exit criteria are satisfied for PR #1 repair path: backend compiles, tests pass, workflow path is valid.
+
+## Documentation Repair — Task Template Forbidden Paths
+- **task:** Remove repository-specific forbidden globs from task/governance templates and replace them with task-scoped placeholders before Phase 1A execution.
+- **scope_lock:** Documentation-only repair; no code, tests, workflows, or runtime behavior changes.
+- **allowed_files:**
+  - `PLANS.md`
+  - `docs/TASK_TEMPLATE.md`
+  - `.github/ISSUE_TEMPLATE/01-codex-task.md`
+- **problem_statement:**
+  - Existing/default task templates hard-code repository-wide forbidden globs that would incorrectly block valid implementation work in later phases.
+- **requirements:**
+  - Remove hard-coded forbidden globs such as `src/**`, `tests/**`, and `.github/workflows/**` from both templates.
+  - Replace them with explicit task-author instructions to fill in task-specific forbidden paths.
+  - Keep the guidance aligned with Phase-based scope control without embedding repository-default deny lists.
+- **non_goals:**
+  - No edits to `docs/MASTER_STATUS.md`.
+  - No edits under `src/**`, `tests/**`, or `.github/workflows/**`.
+  - No workflow, runtime, schema, or implementation changes.
