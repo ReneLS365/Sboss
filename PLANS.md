@@ -55,6 +55,20 @@
 - [x] PR #1 review fix: correct `SchemaSanityTests` schema path resolution to target `src/backend/db/schema.sql` from test output directory.
 - [x] PR #1 review fix: ensure `GET /api/v1/level-seeds/{seedId}` returns `404` for unknown IDs in Phase 0 in-memory repository.
 
+## Documentation Task — Master Status Tracking
+- **task:** Add repository-level master roadmap/status tracking before Phase 1A starts.
+- **scope_lock:** Documentation-only change; no backend, client, runtime, CI, or infrastructure behavior changes.
+- **allowed_files:**
+  - `docs/MASTER_STATUS.md`
+  - `README.md`
+- **requirements:**
+  - Add full phase checklist from Phase 0 through Phase 18.
+  - Mark Phase 0 complete and all later phases/subtasks incomplete.
+  - Add a "Current Position" section showing Phase 0 complete and next task 1A.
+  - Add a short README "Project Status" section linking to `docs/MASTER_STATUS.md`.
+- **non_goals:**
+  - No GitHub Issues, Projects, automation, scripts, generators, or CI changes.
+  - No Phase 1A implementation or modifications under `src/**`, `tests/**`, or workflow/runtime files.
 
 ## Phase 0 Repair (PR #1 Green Checks)
 - **task:** Targeted repair to make PR #1 pass all required checks.

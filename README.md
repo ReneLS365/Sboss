@@ -14,6 +14,12 @@ Sboss is bootstrapped as a server-authoritative online game foundation where .NE
 ## Current Roadmap Phase
 - **Phase 0 (Bootstrap Foundation)**
 
+## Project Status
+Project execution status is tracked in [docs/MASTER_STATUS.md](docs/MASTER_STATUS.md).
+
+Current next task:
+- **1A — Domain entities + contracts**
+
 ## Local Setup
 1. Copy env file:
    - `cp .env.example .env`
