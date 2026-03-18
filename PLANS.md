@@ -97,3 +97,24 @@
   - level-seed endpoint now preserves documented `404` path for unknown IDs and is covered by a stable API test.
 - **fase_0_exit_note:**
   - Fase 0 exit criteria are satisfied for PR #1 repair path: backend compiles, tests pass, workflow path is valid.
+
+## Governance Layer Task — Codex Control Scaffolding
+- **task:** Add repository governance layer and Codex execution scaffolding before Phase 1A.
+- **scope_lock:** Documentation-only change; no runtime, CI workflow, infrastructure, backend, client, or test behavior changes.
+- **allowed_files:**
+  - `docs/CODEX_WORKFLOW.md`
+  - `docs/TASK_TEMPLATE.md`
+  - `.github/PULL_REQUEST_TEMPLATE.md`
+  - `.github/ISSUE_TEMPLATE/01-codex-task.md`
+  - `CODEOWNERS`
+  - `README.md`
+- **requirements:**
+  - Add governance workflow documentation that locks execution to plan-first, documentation-gated delivery.
+  - Add reusable task template aligned to `docs/MASTER_STATUS.md` as the only roadmap/progress source.
+  - Add GitHub pull request and issue templates for Codex-controlled execution.
+  - Add CODEOWNERS for governance review routing.
+  - Update `README.md` with a short execution model section linking to `docs/MASTER_STATUS.md`, `docs/CODEX_WORKFLOW.md`, and `docs/TASK_TEMPLATE.md`.
+- **non_goals:**
+  - No Phase 1A implementation.
+  - No modifications under `src/**`, `tests/**`, `.github/workflows/**`, `docker/**`, or `infrastructure/**`.
+  - No scripts, automation, or runtime refactors.
