@@ -118,3 +118,18 @@
   - No Phase 1A implementation.
   - No modifications under `src/**`, `tests/**`, `.github/workflows/**`, `docker/**`, or `infrastructure/**`.
   - No scripts, automation, or runtime refactors.
+
+## PR #3 Review Fix — Documentation Scope Gate
+- **task:** Fix the Codex workflow scope gate so runtime-code checks only apply when the scoped task is documentation-only or otherwise explicitly forbids runtime paths.
+- **scope_lock:** Documentation-only change; no runtime, CI workflow, infrastructure, backend, client, or test behavior changes.
+- **allowed_files:**
+  - `PLANS.md`
+  - `docs/CODEX_WORKFLOW.md`
+- **requirements:**
+  - Clarify that the forbidden-path/runtime-code validation step must follow each task's declared allowlist and non-goals.
+  - Make documentation-only tasks explicitly require proof that runtime code did not change.
+  - Preserve the plan-first and phase-lock controls for future implementation tasks such as Phase 1A.
+- **non_goals:**
+  - No Phase 1A implementation.
+  - No modifications under `src/**`, `tests/**`, `.github/**`, `docker/**`, or `infrastructure/**`.
+  - No changes to CODEOWNERS, templates, or runtime behavior.

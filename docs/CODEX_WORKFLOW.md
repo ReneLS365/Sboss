@@ -14,8 +14,9 @@ This document locks the repository execution model before Phase 1A begins.
 1. Confirm the requested work is inside the current phase in `docs/MASTER_STATUS.md`.
 2. Record the task scope, allowed files, and non-goals in `PLANS.md`.
 3. Make the smallest possible change set that satisfies the scoped task.
-4. Validate that no forbidden paths or runtime code were modified.
-5. Open a draft PR using the repository templates.
+4. Validate the diff against the task's declared allowlist, forbidden paths, and non-goals.
+5. For documentation-only tasks, prove that no runtime code was modified; for implementation tasks, prove that only the scoped runtime paths changed.
+6. Open a draft PR using the repository templates.
 
 ## Task Definition Rules
 - Use `docs/TASK_TEMPLATE.md` for new scoped tasks.
@@ -25,6 +26,7 @@ This document locks the repository execution model before Phase 1A begins.
 
 ## Review Gates
 - Scope gate: the diff must match the declared allowed files.
+- Task-scope gate: validation rules must follow the task's declared allowlist and forbidden paths instead of assuming every task is docs-only.
 - Phase gate: the task must not advance work from a future phase.
 - Architecture gate: changes must preserve server-authoritative ownership.
 - Documentation gate: README and templates must point contributors to the locked control documents when relevant.
