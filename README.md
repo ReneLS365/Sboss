@@ -20,6 +20,12 @@ Project execution status is tracked in [docs/MASTER_STATUS.md](docs/MASTER_STATU
 Current next task:
 - **1A — Domain entities + contracts**
 
+## Execution Model
+- Roadmap and progress source of truth: [docs/MASTER_STATUS.md](docs/MASTER_STATUS.md)
+- Repository execution and governance workflow: [docs/CODEX_WORKFLOW.md](docs/CODEX_WORKFLOW.md)
+- Task definition format for scoped work: [docs/TASK_TEMPLATE.md](docs/TASK_TEMPLATE.md)
+- All implementation work should follow the locked phase, allowed-file, and plan-first controls above.
+
 ## Local Setup
 1. Copy env file:
    - `cp .env.example .env`

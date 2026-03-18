@@ -12,6 +12,11 @@ assignees: []
 # Goal
 `<what this task should achieve>`
 
+# Phase Check
+- Current phase from `docs/MASTER_STATUS.md`:
+- Next planned task from `docs/MASTER_STATUS.md`:
+- Why this task is allowed in the current phase:
+
 # Allowed Files
 - `<required file/path>`
 - `<required file/path>`
