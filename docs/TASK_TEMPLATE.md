@@ -1,28 +1,48 @@
 # Task Template
 
-## Title
-- `<concise task title>`
+Use this template for repository-scoped Codex tasks.  
+`docs/MASTER_STATUS.md` is the single source of truth for phase and roadmap.
 
-## Goal
-- `<what this task should achieve>`
+---
 
-## Allowed Files
-- `<required file/path>`
-- `<required file/path>`
+# Title
+<short task title>
 
-## Forbidden Files
-- Replace this section with task-specific forbidden paths before execution.
-- Include only paths that are intentionally out of scope for this task.
-- Do not leave repository-default globs here.
+# Goal
+<one outcome-focused sentence>
 
-## Acceptance Criteria
-- `<measurable outcome>`
-- `<measurable outcome>`
+# Phase Check
+- Current phase from `docs/MASTER_STATUS.md`:
+- Next planned task from `docs/MASTER_STATUS.md`:
+- Why this task is allowed in the current phase:
 
-## Validation
-- `<command or manual check>`
-- `<command or manual check>`
+# Scope
+- In scope:
+- Out of scope:
 
-## Notes for Author
-- Confirm the forbidden paths are scoped to the current task instead of copied from another template.
-- If a task allows implementation work, avoid broad repository-wide deny lists unless the task explicitly requires that restriction.
+# Allowed Files
+- <required file/path>
+- <required file/path>
+
+# Forbidden Files
+- Replace this list with task-specific forbidden paths before execution.
+- Include only paths intentionally out of scope for this task.
+- Do not include repository-default forbidden globs.
+
+# Acceptance Criteria
+- <measurable outcome>
+- <measurable outcome>
+
+# Validation
+- Commands to run:
+  - <command>
+- Manual checks:
+  - Confirm expected behavior
+
+# Notes
+- Record constraints, risks, or dependencies.
+
+# Author Checklist
+- Confirm forbidden paths are task-specific (not copied defaults).
+- Confirm task aligns with current phase in `docs/MASTER_STATUS.md`.
+- Confirm scope does not exceed phase boundaries.
