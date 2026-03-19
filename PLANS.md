@@ -124,6 +124,9 @@
   - Current API/test surface is not broken by the baseline changes.
   - `docs/MASTER_STATUS.md` advances to the next roadmap task only if all Phase 1B validation succeeds.
 - **Blockers:** None recorded.
+- **Follow-up review actions (2026-03-19):**
+  - Ensure `src/backend/db/scripts/docker-init.sh` uses the Postgres entrypoint's Unix-socket bootstrap path instead of a `localhost` TCP DSN so first-run migration + seed succeeds on an empty Docker volume.
+  - Add regression coverage that the Docker init bootstrap path avoids `localhost` and still invokes the migration + seed scripts.
 - **Last updated:** 2026-03-19
 
 ---

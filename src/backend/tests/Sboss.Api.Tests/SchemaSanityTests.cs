@@ -73,12 +73,17 @@ public sealed class SchemaSanityTests
         var applyMigrations = File.ReadAllText(ResolveScriptPath("apply-migrations.sh"));
         var applySeed = File.ReadAllText(ResolveScriptPath("apply-seed.sh"));
         var validateBootstrap = File.ReadAllText(ResolveScriptPath("validate-bootstrap.sh"));
+        var dockerInit = File.ReadAllText(ResolveScriptPath("docker-init.sh"));
 
         Assert.Contains("schema_migrations", applyMigrations, StringComparison.Ordinal);
         Assert.Contains("/migrations", applyMigrations, StringComparison.Ordinal);
         Assert.Contains("seed.sql", applySeed, StringComparison.Ordinal);
         Assert.Contains("apply-migrations.sh", validateBootstrap, StringComparison.Ordinal);
         Assert.Contains("apply-seed.sh", validateBootstrap, StringComparison.Ordinal);
+        Assert.Contains("postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@/${POSTGRES_DB}", dockerInit, StringComparison.Ordinal);
+        Assert.DoesNotContain("@localhost", dockerInit, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("apply-migrations.sh", dockerInit, StringComparison.Ordinal);
+        Assert.Contains("apply-seed.sh", dockerInit, StringComparison.Ordinal);
     }
 
     private static string ResolveSchemaPath()
