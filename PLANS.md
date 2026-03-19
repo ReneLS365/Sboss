@@ -45,6 +45,8 @@
   - Positive API tests cover the current season endpoint and known level-seed lookup.
   - No new runtime surface area is introduced.
 - **Blockers:** None.
+- **Follow-up review actions (2026-03-19):**
+  - Tighten `SchemaSanityTests` so seed validation targets the `seasons` and `level_seeds` insert rows directly rather than matching GUIDs anywhere in `src/backend/db/seed.sql`.
 - **Last updated:** 2026-03-19
 
 ---
