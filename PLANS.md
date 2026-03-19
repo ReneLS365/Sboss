@@ -8,6 +8,49 @@
 
 ---
 
+## Task Record — P1A-PREFLIGHT-BASELINE-REPAIR
+- **Task ID:** P1A-PREFLIGHT-BASELINE-REPAIR
+- **Title:** Phase 1A preflight baseline repair and Phase 1 doc alignment
+- **Phase:** Phase 1 — Authoritative Core Domain
+- **Status:** IN_PROGRESS
+- **Branch:** work
+- **PR:** DRAFT / pending
+- **Scope:**
+  - Align active contributor docs that still present Phase 0-only execution rules.
+  - Align in-memory season and level-seed fixtures with `src/backend/db/seed.sql`.
+  - Add/adjust tests so fixture drift is caught automatically before 1A implementation starts.
+- **Allowed files:**
+  - `PLANS.md`
+  - `docs/FINAL_ARCHITECTURE.md`
+  - `docs/repo/GITHUB_WORKFLOW.md`
+  - `docs/repo/LABEL_TAXONOMY.md`
+  - `docs/api/API_CONTRACTS.md`
+  - `.github/repo-labels.json`
+  - `src/backend/Sboss.Infrastructure/Repositories/InMemorySeasonRepository.cs`
+  - `src/backend/Sboss.Infrastructure/Repositories/InMemoryLevelSeedRepository.cs`
+  - `src/backend/db/seed.sql`
+  - `src/backend/tests/Sboss.Api.Tests/LevelSeedsEndpointTests.cs`
+  - `src/backend/tests/Sboss.Api.Tests/MatchResultsContractTests.cs`
+  - `src/backend/tests/Sboss.Api.Tests/HealthEndpointTests.cs`
+  - `src/backend/tests/Sboss.Api.Tests/SchemaSanityTests.cs`
+  - `src/backend/tests/Sboss.Api.Tests/SeasonEndpointTests.cs`
+- **Non-goals:**
+  - No new domain invariants or state machines.
+  - No database repository implementation.
+  - No auth, economy, progression, multiplayer, or endpoint expansion.
+  - No schema redesign or broad domain-model refactor.
+- **Acceptance criteria:**
+  - Active docs no longer present Phase 0 as the operational frame for current work.
+  - In-memory season and level-seed fixtures match `src/backend/db/seed.sql`.
+  - Positive API tests cover the current season endpoint and known level-seed lookup.
+  - No new runtime surface area is introduced.
+- **Blockers:** None.
+- **Follow-up review actions (2026-03-19):**
+  - Tighten `SchemaSanityTests` so seed validation targets the `seasons` and `level_seeds` insert rows directly rather than matching GUIDs anywhere in `src/backend/db/seed.sql`.
+- **Last updated:** 2026-03-19
+
+---
+
 ## Task Breakdown
 1. Lock architecture and roadmap documents for server-authoritative baseline.
 2. Establish repository standards and agent-control files.

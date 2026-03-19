@@ -1,4 +1,4 @@
-# Final Architecture Lock (Phase 0)
+# Final Architecture Lock
 
 ## Authority Model
 - PostgreSQL is the persistent source of truth.
@@ -21,4 +21,6 @@
 - No client-calculated authoritative outcomes accepted without backend checks.
 
 ## Phase Guardrails
-- No Phase 1+ features in this scaffold.
+- This document is an architecture lock, not a Phase 0 execution freeze.
+- Work must follow `docs/MASTER_STATUS.md` for the active roadmap phase and next task.
+- The server-authoritative trust boundary remains mandatory for all phases.

@@ -4,11 +4,13 @@ namespace Sboss.Infrastructure.Repositories;
 
 public sealed class InMemorySeasonRepository : ISeasonRepository
 {
+    private static readonly Guid ActiveSeasonId = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc");
+
     public Task<CurrentSeasonResponse> GetCurrentSeasonAsync(CancellationToken cancellationToken)
     {
         var now = DateTimeOffset.UtcNow;
         var season = new CurrentSeasonResponse(
-            Guid.Parse("11111111-aaaa-4444-bbbb-111111111111"),
+            ActiveSeasonId,
             "Phase0-Season",
             now.AddDays(-1),
             now.AddDays(30),

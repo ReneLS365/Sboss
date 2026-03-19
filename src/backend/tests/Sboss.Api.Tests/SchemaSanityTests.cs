@@ -2,6 +2,11 @@ namespace Sboss.Api.Tests;
 
 public sealed class SchemaSanityTests
 {
+    private const string ActiveSeasonId = "cccccccc-cccc-cccc-cccc-cccccccccccc";
+    private const string KnownLevelSeedId = "dddddddd-dddd-dddd-dddd-dddddddddddd";
+    private const string SeasonsInsertPrefix = "INSERT INTO seasons (season_id, name, starts_at, ends_at, is_active)";
+    private const string LevelSeedsInsertPrefix = "INSERT INTO level_seeds (level_seed_id, seed_value, biome, template, objective, modifiers_json, par_time_ms, gold_time_ms, version)";
+
     [Fact]
     public void SchemaContainsRequiredTables()
     {
@@ -25,6 +30,22 @@ public sealed class SchemaSanityTests
         }
     }
 
+    [Fact]
+    public void SeedSql_ContainsExpectedSeasonAndLevelSeedRows()
+    {
+        var seedPath = ResolveSeedPath();
+        var seed = NormalizeWhitespace(File.ReadAllText(seedPath));
+
+        Assert.Contains(
+            NormalizeWhitespace($"{SeasonsInsertPrefix} VALUES ('{ActiveSeasonId}',"),
+            seed,
+            StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(
+            NormalizeWhitespace($"{LevelSeedsInsertPrefix} VALUES ('{KnownLevelSeedId}',"),
+            seed,
+            StringComparison.OrdinalIgnoreCase);
+    }
+
     private static string ResolveSchemaPath()
     {
         var current = new DirectoryInfo(AppContext.BaseDirectory);
@@ -41,5 +62,28 @@ public sealed class SchemaSanityTests
         }
 
         throw new FileNotFoundException("Unable to locate db/schema.sql by traversing parent directories.");
+    }
+
+    private static string ResolveSeedPath()
+    {
+        var current = new DirectoryInfo(AppContext.BaseDirectory);
+
+        while (current is not null)
+        {
+            var candidate = Path.Combine(current.FullName, "db", "seed.sql");
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+
+            current = current.Parent;
+        }
+
+        throw new FileNotFoundException("Unable to locate db/seed.sql by traversing parent directories.");
+    }
+
+    private static string NormalizeWhitespace(string value)
+    {
+        return string.Join(' ', value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
     }
 }

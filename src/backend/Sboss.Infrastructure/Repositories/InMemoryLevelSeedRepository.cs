@@ -4,7 +4,7 @@ namespace Sboss.Infrastructure.Repositories;
 
 public sealed class InMemoryLevelSeedRepository : ILevelSeedRepository
 {
-    private static readonly Guid KnownSeedId = Guid.Parse("22222222-bbbb-4444-cccc-222222222222");
+    private static readonly Guid KnownSeedId = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
 
     public Task<LevelSeedResponse?> GetByIdAsync(Guid seedId, CancellationToken cancellationToken)
     {
