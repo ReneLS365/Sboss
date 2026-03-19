@@ -1,8 +1,10 @@
 # Sboss Phase Plan
 
 ## Current Phase
-- **Current_phase:** 0 (Bootstrap Foundation)
-- **Phase_lock:** Phase 0 only. No gameplay, management systems, leaderboard logic, auth provider integrations, or real-time networking.
+- **Current_phase:** 1 (Authoritative Core Domain)
+- **Execution_mode:** Follow `docs/MASTER_STATUS.md` and complete roadmap tasks in sequence.
+- **Architecture_lock:** Server-authoritative backend, Unity dumb client.
+- **Workflow_lock:** Plan-first, scoped changes, update plan as work progresses.
 
 ---
 
@@ -22,14 +24,14 @@
 ## Risks
 - Local environment may not include Unity editor.
 - CI strictness (warnings-as-errors) can block scaffolding.
-- PostgreSQL integration is infrastructure-only in Phase 0.
+- PostgreSQL integration in this completed bootstrap stage was infrastructure-only.
 
 ---
 
 ## Assumptions
 - .NET 8 SDK available
 - Docker available
-- Phase 0 allows schema-first + contract-first APIs
+- The completed bootstrap stage allowed schema-first + contract-first APIs
 - Label automation via file is acceptable
 
 ---
@@ -81,10 +83,10 @@
 
 ---
 
-## Phase 0 Repair (PR #1 Green Checks)
+## Bootstrap Repair (PR #1 Green Checks)
 **task:** Fix CI + build issues  
 
-**scope_lock:** Phase 0 only  
+**scope_lock:** Bootstrap repair only  
 
 **root_cause_summary:**
 - Missing package references
@@ -148,3 +150,43 @@
 
 **non_goals:**
 - No Phase 1A implementation
+
+---
+
+## Governance Repair — Remove Stale Phase 0 Lock
+**task:** Remove stale Phase 0 lock  
+
+**scope:** Docs only  
+
+**outcome:**
+- Repo governance aligned to roadmap-driven execution
+
+---
+
+## Follow-up Governance Repair — Phase 1 Tracker Clarification
+**task:** Clarify current-phase tracking before Phase 1 execution
+
+**scope_lock:** Docs only
+
+**allowed_files:**
+- docs/MASTER_STATUS.md
+- AGENTS.md
+- docs/roadmap/ROADMAP_LOCK.md
+- README.md
+
+**problem_statement:**
+- Governance docs now point to roadmap-driven execution, but `docs/MASTER_STATUS.md` does not explicitly declare the active phase and `docs/roadmap/ROADMAP_LOCK.md` overstates `PLANS.md` as the active execution tracker before a scoped Phase 1 task is recorded.
+
+**requirements:**
+- Add an explicit current-phase field to `docs/MASTER_STATUS.md`
+- Keep `docs/MASTER_STATUS.md` as the roadmap phase + next task source of truth
+- Reframe `PLANS.md` as task-scoping support rather than the current-phase tracker
+- Align contributor-facing docs with the clarified governance model
+
+**validation:**
+- `rg -n "Current phase:|Next task:|Execution Tracker|task-scoping" docs/MASTER_STATUS.md AGENTS.md docs/roadmap/ROADMAP_LOCK.md README.md`
+- `git diff --name-only`
+
+**non_goals:**
+- No runtime/code changes
+- No Phase 1 implementation work

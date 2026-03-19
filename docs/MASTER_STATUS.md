@@ -1,6 +1,7 @@
 # Sboss — Master Status
 
 ## Current Position
+- Current phase: **Phase 1 — Authoritative Core Domain**
 - Completed phase: **Phase 0 — Foundation / Bootstrap**
 - Next task: **1A — Domain entities + contracts**
 
