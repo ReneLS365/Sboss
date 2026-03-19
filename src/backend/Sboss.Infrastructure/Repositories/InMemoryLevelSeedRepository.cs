@@ -1,4 +1,4 @@
-using Sboss.Contracts.LevelSeeds;
+using Sboss.Domain.Entities;
 
 namespace Sboss.Infrastructure.Repositories;
 
@@ -6,14 +6,15 @@ public sealed class InMemoryLevelSeedRepository : ILevelSeedRepository
 {
     private static readonly Guid KnownSeedId = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
 
-    public Task<LevelSeedResponse?> GetByIdAsync(Guid seedId, CancellationToken cancellationToken)
+    public Task<LevelSeed?> GetByIdAsync(Guid seedId, CancellationToken cancellationToken)
     {
         if (seedId != KnownSeedId)
         {
-            return Task.FromResult<LevelSeedResponse?>(null);
+            return Task.FromResult<LevelSeed?>(null);
         }
 
-        var seed = new LevelSeedResponse(
+        var createdAt = DateTimeOffset.UtcNow.AddDays(-2);
+        var seed = LevelSeed.Rehydrate(
             KnownSeedId,
             "SBOSS-SEED-001",
             "urban",
@@ -22,8 +23,10 @@ public sealed class InMemoryLevelSeedRepository : ILevelSeedRepository
             "{\"modifiers\":[\"none\"]}",
             120000,
             90000,
-            1);
+            1,
+            createdAt,
+            createdAt);
 
-        return Task.FromResult<LevelSeedResponse?>(seed);
+        return Task.FromResult<LevelSeed?>(seed);
     }
 }

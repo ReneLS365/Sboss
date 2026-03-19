@@ -1,8 +1,8 @@
-using Sboss.Contracts.LevelSeeds;
+using Sboss.Domain.Entities;
 
 namespace Sboss.Infrastructure.Repositories;
 
 public interface ILevelSeedRepository
 {
-    Task<LevelSeedResponse?> GetByIdAsync(Guid seedId, CancellationToken cancellationToken);
+    Task<LevelSeed?> GetByIdAsync(Guid seedId, CancellationToken cancellationToken);
 }
