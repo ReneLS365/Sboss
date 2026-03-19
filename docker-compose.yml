@@ -11,8 +11,8 @@ services:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - sboss_postgres_data:/var/lib/postgresql/data
-      - ./src/backend/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
-      - ./src/backend/db/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+      - ./src/backend/db:/docker-entrypoint-initdb.d/db:ro
+      - ./src/backend/db/scripts/docker-init.sh:/docker-entrypoint-initdb.d/00-docker-init.sh:ro
 
 volumes:
   sboss_postgres_data:

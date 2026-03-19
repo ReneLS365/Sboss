@@ -1,6 +1,3 @@
--- Phase 1B compatibility snapshot.
--- Canonical schema ownership now lives in db/migrations and is applied via db/scripts/apply-migrations.sh.
-
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 CREATE TABLE IF NOT EXISTS schema_migrations (

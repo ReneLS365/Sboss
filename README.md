@@ -18,7 +18,7 @@ Sboss is bootstrapped as a server-authoritative online game foundation where .NE
 Project status, explicit current phase, and next task are tracked in [docs/MASTER_STATUS.md](docs/MASTER_STATUS.md).
 
 Current next task:
-- **1A — Domain entities + contracts**
+- **1B — Database schema + migration baseline**
 
 ## Execution Model
 - Roadmap and progress source of truth: [docs/MASTER_STATUS.md](docs/MASTER_STATUS.md)
@@ -56,4 +56,11 @@ Current next task:
 
 ## Start DB Locally
 - `docker compose up -d postgres`
-- Baseline schema and seed scripts auto-apply on first startup.
+- Migration baseline and seed scripts auto-apply on first startup.
+- Manual deterministic bootstrap path:
+  - `export DATABASE_URL=postgresql://sboss:sboss_dev_password@localhost:5432/sboss`
+  - `src/backend/db/scripts/apply-migrations.sh`
+  - `src/backend/db/scripts/apply-seed.sh`
+- Clean-database validation path:
+  - `export POSTGRES_ADMIN_URL=postgresql://sboss:sboss_dev_password@localhost:5432/postgres`
+  - `src/backend/db/scripts/validate-bootstrap.sh`
