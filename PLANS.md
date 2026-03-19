@@ -107,6 +107,7 @@
 **allowed_files:**
 - docs/TASK_TEMPLATE.md
 - .github/ISSUE_TEMPLATE/01-codex-task.md
+- .github/repo-labels.json
 
 **problem_statement:**
 - Templates blocked valid work due to global forbidden paths
@@ -114,6 +115,12 @@
 **requirements:**
 - Remove hardcoded globs
 - Replace with task-scoped instructions
+- Ensure any auto-applied issue labels exist in the declarative label manifest
+
+**validation:**
+- `rg -nE "src/\\*\\*|tests/\\*\\*|\\.github/workflows/\\*\\*" docs/TASK_TEMPLATE.md .github/ISSUE_TEMPLATE/01-codex-task.md`
+- `python - <<'PY'\nfrom pathlib import Path\ntext = Path('.github/repo-labels.json').read_text(encoding='utf-8')\nprint('\"name\": \"codex\"' in text)\nPY`
+- `git diff --name-only`
 
 **non_goals:**
 - No runtime/code changes

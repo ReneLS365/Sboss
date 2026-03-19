@@ -5,6 +5,7 @@
   { "name": "db", "color": "006B75", "description": "Database schema and data work" },
   { "name": "infra", "color": "0052CC", "description": "Infrastructure and local orchestration" },
   { "name": "docs", "color": "FBCA04", "description": "Documentation updates" },
+  { "name": "codex", "color": "5319E7", "description": "Codex-scoped task or automation" },
   { "name": "security", "color": "B60205", "description": "Security and validation boundaries" },
   { "name": "tests", "color": "0E8A16", "description": "Automated tests" },
   { "name": "ci", "color": "C2E0C6", "description": "Continuous integration pipeline" },
