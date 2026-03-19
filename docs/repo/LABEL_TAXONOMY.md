@@ -1,8 +1,9 @@
-# Label Taxonomy (Phase 0)
+# Label Taxonomy
 
 | Label | Purpose | When to Use |
 |---|---|---|
-| `phase:0` | Marks work constrained to bootstrap phase. | Add to all Phase 0 PRs/issues. |
+| `phase:foundation` | Marks historical bootstrap/foundation work. | Use only when touching Phase 0 completion records or historical cleanup tied to the bootstrap baseline. |
+| `phase:1` | Marks current authoritative core domain work. | Add to Phase 1 PRs/issues, including preflight repairs required to start 1A safely. |
 | `backend` | Backend/API/domain/infrastructure scope. | Backend code, API contracts, validation pipeline stubs. |
 | `client` | Unity client shell scope. | Client folder structure, Unity integration placeholders. |
 | `db` | Database schema/data scope. | SQL schema, migrations, seed updates. |
@@ -17,4 +18,4 @@
 ## Stability Rules
 - Keep names short, stable, and operational.
 - No vanity labels.
-- No labels for Phase 1+ features.
+- Add new phase labels only when the roadmap advances into that phase.
