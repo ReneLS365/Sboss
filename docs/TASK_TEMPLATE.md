@@ -1,6 +1,7 @@
 # Task Template
 
-Use this template for repository-scoped Codex tasks. Keep `docs/MASTER_STATUS.md` as the single source of truth for phase and roadmap.
+Use this template for repository-scoped Codex tasks.  
+`docs/MASTER_STATUS.md` is the single source of truth for phase and roadmap.
 
 ---
 
