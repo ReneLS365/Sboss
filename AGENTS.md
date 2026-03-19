@@ -1,7 +1,10 @@
 # AGENTS
 
-## Phase Lock
-- **Fase 0 only**. No implementation beyond bootstrap foundation.
+## Phase Governance
+- `docs/MASTER_STATUS.md` is the source of truth for the current roadmap phase and next task.
+- Work must continue from the latest confirmed repo/project state.
+- Do not work outside the current roadmap phase.
+- Do not invent a stricter lock than the roadmap itself.
 
 ## Architecture Lock
 - Server-authoritative is mandatory.
@@ -18,11 +21,11 @@
 - Use `rg` over grep for search.
 - Use `apply_patch` for targeted edits when modifying existing files.
 
-## Definition of Done (Phase 0)
+## Phase 0 Completion Record
 - Locked architecture docs in place.
 - Backend shell (`.NET 8`) runs with required endpoints.
 - PostgreSQL schema baseline exists.
 - Unity shell documented with dumb-client constraints.
 - CI baseline exists for backend restore/build/test.
 - Labels taxonomy and manifest are available for Phase 0 operations.
-- No Fase 1+ scope creep.
+- Phase 0 bootstrap deliverables completed before roadmap progression.

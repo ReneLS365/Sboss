@@ -1,22 +1,21 @@
 # Roadmap Lock
 
 ## Active Phase
-- Phase 0: Bootstrap Foundation
+- Phase 1: Authoritative Core Domain
+
+## Source of Truth
+- `docs/MASTER_STATUS.md`
+
+## Execution Tracker
+- `PLANS.md`
 
 ## In-Scope
-- Architecture docs
-- Repo setup
-- API shell
-- DB schema baseline
-- Unity shell documentation
-- CI baseline
-- Labels taxonomy
+- Authoritative domain foundation work for the current roadmap phase
+- Roadmap-aligned backend/domain/contracts progression from the latest confirmed repo state
+- Plan-first execution that stays within the active roadmap phase
 
-## Out-of-Scope (Explicit)
-- Gameplay implementation
-- Matchmaking
-- Leaderboards
-- Realtime sockets
-- External auth providers
-- Admin tools
-- Economy balancing
+## Out-of-Scope
+- Future roadmap phases beyond the current active phase
+- Client-owned authority of score, progression, economy, anti-cheat, validation, seeds, or leaderboard
+- Economy logic implemented in Unity
+- Bypassing the plan-first workflow
