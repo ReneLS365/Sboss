@@ -1,22 +1,21 @@
-using Sboss.Contracts.Common;
-using Sboss.Contracts.MatchResults;
+using Sboss.Domain.Entities;
 
 namespace Sboss.Api.Validation;
 
 public interface IMatchResultValidationService
 {
-    Task<string> ValidateAsync(PostMatchResultRequest request, CancellationToken cancellationToken);
+    Task<MatchValidationStatus> ValidateAsync(MatchResult matchResult, CancellationToken cancellationToken);
 }
 
 public sealed class MatchResultValidationService : IMatchResultValidationService
 {
-    public Task<string> ValidateAsync(PostMatchResultRequest request, CancellationToken cancellationToken)
+    public Task<MatchValidationStatus> ValidateAsync(MatchResult matchResult, CancellationToken cancellationToken)
     {
-        if (request.Score < 0 || request.ClearTimeMs <= 0 || request.ComboMax < 0 || request.Penalties < 0)
+        if (matchResult.Score < 0 || matchResult.ClearTimeMs <= 0 || matchResult.ComboMax < 0 || matchResult.Penalties < 0)
         {
-            return Task.FromResult(ValidationStatuses.Rejected);
+            return Task.FromResult(MatchValidationStatus.Rejected);
         }
 
-        return Task.FromResult(ValidationStatuses.Accepted);
+        return Task.FromResult(MatchValidationStatus.Accepted);
     }
 }

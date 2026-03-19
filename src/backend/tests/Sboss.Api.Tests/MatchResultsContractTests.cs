@@ -33,5 +33,24 @@ public sealed class MatchResultsContractTests : IClassFixture<WebApplicationFact
         var payload = await response.Content.ReadFromJsonAsync<PostMatchResultResponse>();
         Assert.NotNull(payload);
         Assert.Equal("accepted", payload!.ValidationStatus);
+        Assert.Equal(2, payload.Version);
+    }
+
+    [Fact]
+    public async Task PostMatchResult_WithInvalidDomainPayload_ReturnsBadRequest()
+    {
+        var client = _factory.CreateClient();
+        var request = new PostMatchResultRequest(
+            Guid.Empty,
+            Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc"),
+            Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd"),
+            1200,
+            100000,
+            10,
+            0);
+
+        var response = await client.PostAsJsonAsync("/api/v1/match-results", request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 }

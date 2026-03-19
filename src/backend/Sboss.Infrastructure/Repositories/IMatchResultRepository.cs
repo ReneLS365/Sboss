@@ -1,8 +1,8 @@
-using Sboss.Contracts.MatchResults;
+using Sboss.Domain.Entities;
 
 namespace Sboss.Infrastructure.Repositories;
 
 public interface IMatchResultRepository
 {
-    Task<PostMatchResultResponse> SaveAsync(PostMatchResultRequest request, string validationStatus, CancellationToken cancellationToken);
+    Task<MatchResult> SaveAsync(MatchResult matchResult, CancellationToken cancellationToken);
 }

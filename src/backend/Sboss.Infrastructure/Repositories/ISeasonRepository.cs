@@ -1,8 +1,8 @@
-using Sboss.Contracts.Seasons;
+using Sboss.Domain.Entities;
 
 namespace Sboss.Infrastructure.Repositories;
 
 public interface ISeasonRepository
 {
-    Task<CurrentSeasonResponse> GetCurrentSeasonAsync(CancellationToken cancellationToken);
+    Task<Season> GetCurrentSeasonAsync(CancellationToken cancellationToken);
 }

@@ -12,9 +12,9 @@
 - **Task ID:** P1A-PREFLIGHT-BASELINE-REPAIR
 - **Title:** Phase 1A preflight baseline repair and Phase 1 doc alignment
 - **Phase:** Phase 1 — Authoritative Core Domain
-- **Status:** IN_PROGRESS
+- **Status:** DONE
 - **Branch:** work
-- **PR:** DRAFT / pending
+- **PR:** #7 (merged)
 - **Scope:**
   - Align active contributor docs that still present Phase 0-only execution rules.
   - Align in-memory season and level-seed fixtures with `src/backend/db/seed.sql`.
@@ -47,6 +47,67 @@
 - **Blockers:** None.
 - **Follow-up review actions (2026-03-19):**
   - Tighten `SchemaSanityTests` so seed validation targets the `seasons` and `level_seeds` insert rows directly rather than matching GUIDs anywhere in `src/backend/db/seed.sql`.
+- **Last updated:** 2026-03-19
+
+---
+
+## Task Record — P1A-AUTHORITATIVE-DOMAIN-AND-CONTRACT-SEPARATION
+- **Task ID:** P1A-AUTHORITATIVE-DOMAIN-AND-CONTRACT-SEPARATION
+- **Title:** Phase 1A authoritative domain entities and contract separation
+- **Phase:** Phase 1 — Authoritative Core Domain
+- **Status:** DONE
+- **Branch:** work
+- **PR:** DRAFT / pending
+- **Scope:**
+  - Replace anemic backend entities for Account, Season, LevelSeed, and MatchResult with controlled authoritative domain models.
+  - Keep transport contracts in `Sboss.Contracts` and move domain rules/state ownership into `Sboss.Domain`.
+  - Update repositories and the current HTTP slice so domain entities are persisted and mapped explicitly to contracts.
+  - Add tests that prove invariant enforcement and current endpoint stability.
+- **Allowed files:**
+  - `PLANS.md`
+  - `docs/MASTER_STATUS.md`
+  - `src/backend/Sboss.Domain/**`
+  - `src/backend/Sboss.Contracts/**`
+  - `src/backend/Sboss.Infrastructure/Repositories/**`
+  - `src/backend/Sboss.Api/Program.cs`
+  - `src/backend/Sboss.Api/Validation/**`
+  - `src/backend/tests/Sboss.Api.Tests/**`
+- **Non-goals:**
+  - No gameplay systems, matchmaking, economy transaction engine, or auth expansion.
+  - No tick engine or roadmap work beyond Phase 1A.
+  - No schema redesign unless a strict Phase 1A requirement forces it.
+  - No unrelated refactors outside the current HTTP surface.
+- **Acceptance criteria:**
+  - Account, Season, LevelSeed, and MatchResult enforce validated construction with no arbitrary public mutation.
+  - Domain validation status is constrained and not represented as a free-form string in the domain.
+  - Repository interfaces and implementations use domain entities or domain-safe results rather than transport DTOs.
+  - Existing endpoints remain stable for `GET /api/v1/seasons/current`, `GET /api/v1/level-seeds/{seedId}`, and `POST /api/v1/match-results`.
+  - Domain and endpoint tests prove invariant failures and invalid match-result rejection.
+  - `docs/MASTER_STATUS.md` is advanced only if restore/build/test and acceptance checks all succeed.
+- **Blockers:** None.
+- **Follow-up review actions (2026-03-19):**
+  - Validate and normalize Account and Season mutation inputs into local variables before applying state changes so failed validation cannot partially mutate aggregates.
+  - Add regression tests that prove invalid account and season updates leave existing entity state unchanged, including explicit null-string handling.
+- **Last updated:** 2026-03-19
+
+---
+
+## Task Record — P1B-DATABASE-SCHEMA-MIGRATION-BASELINE
+- **Task ID:** P1B-DATABASE-SCHEMA-MIGRATION-BASELINE
+- **Title:** Phase 1B database schema and migration baseline
+- **Phase:** Phase 1 — Authoritative Core Domain
+- **Status:** NEXT
+- **Branch:** TBD
+- **PR:** Not started
+- **Scope:**
+  - Implement the existing roadmap item `1B Database schema + migration baseline` without widening scope beyond the defined Phase 1 sequence.
+- **Allowed files:**
+  - To be defined when the Phase 1B task is formally started.
+- **Non-goals:**
+  - No Phase 1C+ repository or service expansion before the 1B plan is scoped.
+- **Acceptance criteria:**
+  - To be defined in the scoped Phase 1B task record before implementation starts.
+- **Blockers:** None recorded.
 - **Last updated:** 2026-03-19
 
 ---

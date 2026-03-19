@@ -3,7 +3,7 @@
 ## Current Position
 - Current phase: **Phase 1 — Authoritative Core Domain**
 - Completed phase: **Phase 0 — Foundation / Bootstrap**
-- Next task: **1A — Domain entities + contracts**
+- Next task: **1B — Database schema + migration baseline**
 
 ---
 
@@ -31,7 +31,7 @@
 ---
 
 ## Phase 1 — Authoritative Core Domain
-- [ ] 1A Domain entities + contracts
+- [x] 1A Domain entities + contracts
 - [ ] 1B Database schema + migration baseline
 - [ ] 1C Core repositories
 - [ ] 1D Economy transaction service
