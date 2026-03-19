@@ -85,6 +85,9 @@
   - Domain and endpoint tests prove invariant failures and invalid match-result rejection.
   - `docs/MASTER_STATUS.md` is advanced only if restore/build/test and acceptance checks all succeed.
 - **Blockers:** None.
+- **Follow-up review actions (2026-03-19):**
+  - Validate and normalize Account and Season mutation inputs into local variables before applying state changes so failed validation cannot partially mutate aggregates.
+  - Add regression tests that prove invalid account and season updates leave existing entity state unchanged, including explicit null-string handling.
 - **Last updated:** 2026-03-19
 
 ---

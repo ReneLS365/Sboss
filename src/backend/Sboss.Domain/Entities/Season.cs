@@ -71,10 +71,11 @@ public sealed class Season
 
     public void UpdateSchedule(string name, DateTimeOffset startsAt, DateTimeOffset endsAt, bool isActive, DateTimeOffset updatedAt)
     {
-        Name = NormalizeName(name);
+        var normalizedName = NormalizeName(name);
         ValidateRange(startsAt, endsAt);
         ValidateTimestamps(CreatedAt, updatedAt);
 
+        Name = normalizedName;
         StartsAt = startsAt;
         EndsAt = endsAt;
         IsActive = isActive;
@@ -84,6 +85,8 @@ public sealed class Season
 
     private static string NormalizeName(string name)
     {
+        ArgumentNullException.ThrowIfNull(name);
+
         var normalized = name.Trim();
         if (string.IsNullOrWhiteSpace(normalized))
         {

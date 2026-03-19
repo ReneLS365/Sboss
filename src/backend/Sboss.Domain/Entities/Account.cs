@@ -49,14 +49,18 @@ public sealed class Account
 
     public void UpdateExternalRef(string externalRef, DateTimeOffset updatedAt)
     {
-        ExternalRef = NormalizeExternalRef(externalRef);
+        var normalizedExternalRef = NormalizeExternalRef(externalRef);
         ValidateTimestamps(CreatedAt, updatedAt);
+
+        ExternalRef = normalizedExternalRef;
         UpdatedAt = updatedAt;
         Version++;
     }
 
     private static string NormalizeExternalRef(string externalRef)
     {
+        ArgumentNullException.ThrowIfNull(externalRef);
+
         var normalized = externalRef.Trim();
         if (string.IsNullOrWhiteSpace(normalized))
         {
