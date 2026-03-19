@@ -4,10 +4,10 @@
 - Phase 1: Authoritative Core Domain
 
 ## Source of Truth
-- `docs/MASTER_STATUS.md`
+- `docs/MASTER_STATUS.md` declares the active roadmap phase and next task.
 
-## Execution Tracker
-- `PLANS.md`
+## Task Scoping
+- `PLANS.md` records the scoped task, allowed files, validation, and non-goals for the work being executed inside the active roadmap phase.
 
 ## In-Scope
 - Authoritative domain foundation work for the current roadmap phase

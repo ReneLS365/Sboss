@@ -1,7 +1,7 @@
 # AGENTS
 
 ## Phase Governance
-- `docs/MASTER_STATUS.md` is the source of truth for the current roadmap phase and next task.
+- `docs/MASTER_STATUS.md` is the source of truth for the explicit current roadmap phase and next task.
 - Work must continue from the latest confirmed repo/project state.
 - Do not work outside the current roadmap phase.
 - Do not invent a stricter lock than the roadmap itself.
