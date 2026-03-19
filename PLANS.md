@@ -57,7 +57,7 @@
 - **Phase:** Phase 1 — Authoritative Core Domain
 - **Status:** DONE
 - **Branch:** work
-- **PR:** DRAFT / pending
+- **PR:** #9 (merged)
 - **Scope:**
   - Replace anemic backend entities for Account, Season, LevelSeed, and MatchResult with controlled authoritative domain models.
   - Keep transport contracts in `Sboss.Contracts` and move domain rules/state ownership into `Sboss.Domain`.
@@ -96,18 +96,57 @@
 - **Task ID:** P1B-DATABASE-SCHEMA-MIGRATION-BASELINE
 - **Title:** Phase 1B database schema and migration baseline
 - **Phase:** Phase 1 — Authoritative Core Domain
+- **Status:** IN_PROGRESS
+- **Branch:** work
+- **PR:** Draft / not opened
+- **Scope:**
+  - Establish a real migration baseline for the existing PostgreSQL schema used by the current Phase 1 HTTP slice.
+  - Make schema creation and seed/bootstrap application deterministic from a clean database.
+  - Add validation coverage and runnable scripts that prove baseline schema + seed apply cleanly without expanding into repositories or gameplay logic.
+- **Allowed files:**
+  - `PLANS.md`
+  - `docs/MASTER_STATUS.md`
+  - `README.md`
+  - `docker-compose.yml`
+  - `src/backend/db/schema.sql`
+  - `src/backend/db/seed.sql`
+  - `src/backend/db/migrations/**`
+  - `src/backend/db/scripts/**`
+  - `src/backend/tests/Sboss.Api.Tests/**`
+- **Non-goals:**
+  - No Phase 1C repository implementation or persistence abstraction expansion.
+  - No economy services, contract/job state machine work, gameplay systems, auth work, or Unity/client changes.
+  - No schema redesign beyond what baseline correctness strictly requires for the existing Phase 1A entities and HTTP slice.
+- **Acceptance criteria:**
+  - A migration baseline exists in-repo and can create the current authoritative schema from scratch deterministically.
+  - Seed/bootstrap data applies cleanly against that baseline and remains compatible with the existing season, level-seed, and match-result HTTP slice.
+  - Repo-provided validation proves schema + seed can be applied on a clean PostgreSQL database.
+  - Current API/test surface is not broken by the baseline changes.
+  - `docs/MASTER_STATUS.md` advances to the next roadmap task only if all Phase 1B validation succeeds.
+- **Blockers:** None recorded.
+- **Follow-up review actions (2026-03-19):**
+  - Ensure `src/backend/db/scripts/docker-init.sh` uses the Postgres entrypoint's Unix-socket bootstrap path instead of a `localhost` TCP DSN so first-run migration + seed succeeds on an empty Docker volume.
+  - Add regression coverage that the Docker init bootstrap path avoids `localhost` and still invokes the migration + seed scripts.
+- **Last updated:** 2026-03-19
+
+---
+
+## Task Record — P1C-CORE-REPOSITORIES
+- **Task ID:** P1C-CORE-REPOSITORIES
+- **Title:** Phase 1C core repositories
+- **Phase:** Phase 1 — Authoritative Core Domain
 - **Status:** NEXT
 - **Branch:** TBD
 - **PR:** Not started
 - **Scope:**
-  - Implement the existing roadmap item `1B Database schema + migration baseline` without widening scope beyond the defined Phase 1 sequence.
+  - Implement the roadmap item `1C Core repositories` after Phase 1B is merged.
 - **Allowed files:**
-  - To be defined when the Phase 1B task is formally started.
+  - To be defined when Phase 1C is formally started.
 - **Non-goals:**
-  - No Phase 1C+ repository or service expansion before the 1B plan is scoped.
+  - No work before Phase 1B is merged and promoted complete.
 - **Acceptance criteria:**
-  - To be defined in the scoped Phase 1B task record before implementation starts.
-- **Blockers:** None recorded.
+  - To be defined when the task is formally started.
+- **Blockers:** Depends on Phase 1B merge.
 - **Last updated:** 2026-03-19
 
 ---
