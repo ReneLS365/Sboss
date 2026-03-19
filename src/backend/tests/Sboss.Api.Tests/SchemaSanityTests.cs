@@ -2,6 +2,9 @@ namespace Sboss.Api.Tests;
 
 public sealed class SchemaSanityTests
 {
+    private const string ActiveSeasonId = "cccccccc-cccc-cccc-cccc-cccccccccccc";
+    private const string KnownLevelSeedId = "dddddddd-dddd-dddd-dddd-dddddddddddd";
+
     [Fact]
     public void SchemaContainsRequiredTables()
     {
@@ -25,6 +28,16 @@ public sealed class SchemaSanityTests
         }
     }
 
+    [Fact]
+    public void SeedSql_ContainsExpectedSeasonAndLevelSeedIds()
+    {
+        var seedPath = ResolveSeedPath();
+        var seed = File.ReadAllText(seedPath);
+
+        Assert.Contains(ActiveSeasonId, seed, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(KnownLevelSeedId, seed, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static string ResolveSchemaPath()
     {
         var current = new DirectoryInfo(AppContext.BaseDirectory);
@@ -41,5 +54,23 @@ public sealed class SchemaSanityTests
         }
 
         throw new FileNotFoundException("Unable to locate db/schema.sql by traversing parent directories.");
+    }
+
+    private static string ResolveSeedPath()
+    {
+        var current = new DirectoryInfo(AppContext.BaseDirectory);
+
+        while (current is not null)
+        {
+            var candidate = Path.Combine(current.FullName, "db", "seed.sql");
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+
+            current = current.Parent;
+        }
+
+        throw new FileNotFoundException("Unable to locate db/seed.sql by traversing parent directories.");
     }
 }

@@ -1,5 +1,6 @@
 [
-  { "name": "phase:0", "color": "0E8A16", "description": "Bootstrap phase scope" },
+  { "name": "phase:foundation", "color": "0E8A16", "description": "Historical Phase 0 foundation and bootstrap work" },
+  { "name": "phase:1", "color": "0052CC", "description": "Phase 1 authoritative core domain work" },
   { "name": "backend", "color": "1D76DB", "description": "Backend API/domain/infrastructure work" },
   { "name": "client", "color": "5319E7", "description": "Unity client shell work" },
   { "name": "db", "color": "006B75", "description": "Database schema and data work" },
