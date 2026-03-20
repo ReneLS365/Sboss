@@ -96,9 +96,9 @@
 - **Task ID:** P1B-DATABASE-SCHEMA-MIGRATION-BASELINE
 - **Title:** Phase 1B database schema and migration baseline
 - **Phase:** Phase 1 — Authoritative Core Domain
-- **Status:** IN_PROGRESS
+- **Status:** DONE
 - **Branch:** work
-- **PR:** Draft / not opened
+- **PR:** #10 (merged)
 - **Scope:**
   - Establish a real migration baseline for the existing PostgreSQL schema used by the current Phase 1 HTTP slice.
   - Make schema creation and seed/bootstrap application deterministic from a clean database.
@@ -135,18 +135,59 @@
 - **Task ID:** P1C-CORE-REPOSITORIES
 - **Title:** Phase 1C core repositories
 - **Phase:** Phase 1 — Authoritative Core Domain
+- **Status:** DONE
+- **Branch:** work
+- **PR:** Draft PR prepared via make_pr
+- **Scope:**
+  - Repair status tracking so merged Phase 1B work is reflected correctly before new implementation proceeds.
+  - Implement explicit PostgreSQL-backed repositories for Account, Season, LevelSeed, and MatchResult aligned to the current authoritative backend HTTP slice.
+  - Add roadmap-status validation that blocks status drift between `PLANS.md`, `docs/MASTER_STATUS.md`, and the active Phase 1 task.
+- **Allowed files:**
+  - `PLANS.md`
+  - `docs/MASTER_STATUS.md`
+  - `src/backend/Sboss.Infrastructure/Repositories/**`
+  - `src/backend/Sboss.Infrastructure/**`
+  - `src/backend/Sboss.Domain/**`
+  - `src/backend/Sboss.Contracts/**`
+  - `src/backend/Sboss.Api/**`
+  - `src/backend/tests/**`
+  - `.github/workflows/**`
+  - `scripts/**`
+  - `README.md` only if repository/bootstrap instructions strictly require it
+- **Non-goals:**
+  - No client/Unity changes.
+  - No economy systems, matchmaking systems, tick engine, or auth expansion beyond repository needs.
+  - No fake generic repository abstraction layer or unrelated refactors.
+- **Acceptance criteria:**
+  - Phase 1B status is repaired first in both `PLANS.md` and `docs/MASTER_STATUS.md`.
+  - Core repositories exist for Account, Season, LevelSeed, and MatchResult using explicit row-to-domain mapping.
+  - Repository tests prove the current domain entities round-trip against the Phase 1B migration baseline and deterministic seed path.
+  - Automated validation fails on roadmap/status drift and runs in CI.
+  - Current API/build/test validation succeeds before task completion is recorded.
+- **Blockers:** None recorded.
+- **Follow-up review actions (2026-03-20):**
+  - Fix the roadmap-status guardrail so it derives the active phase section from `docs/MASTER_STATUS.md` and allows `Next task` to point at the step after an `IN_PROGRESS` task.
+  - Refuse to run repository integration test database resets unless `SBOSS_TEST_DATABASE` is explicitly set to a non-development database.
+- **Last updated:** 2026-03-20
+
+---
+
+## Task Record — P1D-ECONOMY-TRANSACTION-SERVICE
+- **Task ID:** P1D-ECONOMY-TRANSACTION-SERVICE
+- **Title:** Phase 1D economy transaction service
+- **Phase:** Phase 1 — Authoritative Core Domain
 - **Status:** NEXT
 - **Branch:** TBD
 - **PR:** Not started
 - **Scope:**
-  - Implement the roadmap item `1C Core repositories` after Phase 1B is merged.
+  - Implement the roadmap item `1D Economy transaction service` after Phase 1C is merged.
 - **Allowed files:**
-  - To be defined when Phase 1C is formally started.
+  - To be defined when Phase 1D is formally started.
 - **Non-goals:**
-  - No work before Phase 1B is merged and promoted complete.
+  - No work before Phase 1C is merged and promoted complete.
 - **Acceptance criteria:**
   - To be defined when the task is formally started.
-- **Blockers:** Depends on Phase 1B merge.
+- **Blockers:** Depends on Phase 1C merge.
 - **Last updated:** 2026-03-19
 
 ---

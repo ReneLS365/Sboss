@@ -1,18 +1,18 @@
 using System.Net;
 using System.Net.Http.Json;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Sboss.Contracts.LevelSeeds;
 
 namespace Sboss.Api.Tests;
 
-public sealed class LevelSeedsEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+[Collection(PostgresCollection.Name)]
+public sealed class LevelSeedsEndpointTests
 {
     private static readonly Guid KnownSeedId = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly TestWebApplicationFactory _factory;
 
-    public LevelSeedsEndpointTests(WebApplicationFactory<Program> factory)
+    public LevelSeedsEndpointTests(PostgresDatabaseFixture database)
     {
-        _factory = factory;
+        _factory = new TestWebApplicationFactory(database.ConnectionString);
     }
 
     [Fact]

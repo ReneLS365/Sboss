@@ -1,18 +1,18 @@
 using System.Net;
 using System.Net.Http.Json;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Sboss.Contracts.Seasons;
 
 namespace Sboss.Api.Tests;
 
-public sealed class SeasonEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+[Collection(PostgresCollection.Name)]
+public sealed class SeasonEndpointTests
 {
     private static readonly Guid ActiveSeasonId = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc");
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly TestWebApplicationFactory _factory;
 
-    public SeasonEndpointTests(WebApplicationFactory<Program> factory)
+    public SeasonEndpointTests(PostgresDatabaseFixture database)
     {
-        _factory = factory;
+        _factory = new TestWebApplicationFactory(database.ConnectionString);
     }
 
     [Fact]

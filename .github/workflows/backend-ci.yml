@@ -9,6 +9,22 @@ on:
 jobs:
   build-test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: sboss
+          POSTGRES_PASSWORD: sboss_dev_password
+          POSTGRES_DB: sboss
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sboss -d sboss"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      SBOSS_TEST_DATABASE: Host=localhost;Port=5432;Database=sboss_tests;Username=sboss;Password=sboss_dev_password
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -20,6 +36,9 @@ jobs:
 
       - name: Restore
         run: dotnet restore Sboss.sln
+
+      - name: Validate roadmap status
+        run: python3 scripts/validate-roadmap-status.py
 
       - name: Build
         run: dotnet build Sboss.sln --configuration Release -warnaserror --no-restore
