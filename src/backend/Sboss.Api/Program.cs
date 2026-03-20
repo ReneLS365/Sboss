@@ -39,11 +39,39 @@ app.MapGet("/api/v1/level-seeds/{seedId:guid}", async (Guid seedId, ILevelSeedRe
 
 app.MapPost("/api/v1/match-results", async (
     PostMatchResultRequest request,
+    IAccountRepository accountRepository,
+    ISeasonRepository seasonRepository,
+    ILevelSeedRepository levelSeedRepository,
     IMatchResultRepository repository,
     IMatchResultValidationService validator,
     ConcurrentDictionary<Guid, SemaphoreSlim> locks,
     CancellationToken cancellationToken) =>
 {
+    var account = await accountRepository.GetByIdAsync(request.AccountId, cancellationToken);
+    var season = await seasonRepository.GetByIdAsync(request.SeasonId, cancellationToken);
+    var levelSeed = await levelSeedRepository.GetByIdAsync(request.LevelSeedId, cancellationToken);
+
+    var referenceErrors = new Dictionary<string, string[]>();
+    if (account is null)
+    {
+        referenceErrors["accountId"] = new[] { "Account does not exist." };
+    }
+
+    if (season is null)
+    {
+        referenceErrors["seasonId"] = new[] { "Season does not exist." };
+    }
+
+    if (levelSeed is null)
+    {
+        referenceErrors["levelSeedId"] = new[] { "Level seed does not exist." };
+    }
+
+    if (referenceErrors.Count > 0)
+    {
+        return Results.ValidationProblem(referenceErrors);
+    }
+
     MatchResult matchResult;
 
     try

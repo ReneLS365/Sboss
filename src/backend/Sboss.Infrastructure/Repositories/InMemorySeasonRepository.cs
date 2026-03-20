@@ -22,4 +22,10 @@ public sealed class InMemorySeasonRepository : ISeasonRepository
 
         return Task.FromResult(season);
     }
+
+    public async Task<Season?> GetByIdAsync(Guid seasonId, CancellationToken cancellationToken)
+    {
+        var season = await GetCurrentSeasonAsync(cancellationToken);
+        return season.SeasonId == seasonId ? season : null;
+    }
 }
