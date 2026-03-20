@@ -116,6 +116,7 @@ public sealed class SchemaSanityTests
         Assert.Contains("src/backend/db/seed.sql", fixture, StringComparison.Ordinal);
         Assert.Contains("DROP SCHEMA IF EXISTS public CASCADE;", fixture, StringComparison.Ordinal);
         Assert.Contains("CREATE SCHEMA public;", fixture, StringComparison.Ordinal);
+        Assert.Contains("NpgsqlConnection.ClearAllPools();", fixture, StringComparison.Ordinal);
         Assert.Contains("resetConnection", fixture, StringComparison.Ordinal);
         Assert.DoesNotContain("pg_terminate_backend", fixture, StringComparison.Ordinal);
         Assert.DoesNotContain("DROP DATABASE IF EXISTS", fixture, StringComparison.Ordinal);

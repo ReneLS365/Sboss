@@ -177,8 +177,8 @@
 - **Title:** Phase 1D economy transaction service
 - **Phase:** Phase 1 — Authoritative Core Domain
 - **Status:** IN_PROGRESS
-- **Branch:** work
-- **PR:** Draft PR prepared via make_pr
+- **Branch:** codex-2026-03-20-phase-1d-postgres-reset-fix
+- **PR:** Draft PR — `Fix Phase 1D PostgreSQL test reset pooling`
 - **Scope:**
   - Update roadmap tracking so Phase 1D is the active task after merged Phase 1C repository work.
   - Add authoritative account balance state and an append-only economy transaction ledger in PostgreSQL.
@@ -215,6 +215,9 @@
   - Fix `src/backend/tests/Sboss.Api.Tests/PostgresDatabaseFixture.cs` so the shared PostgreSQL test reset applies the full 1D migration chain (`0001`, then `0002`) before `seed.sql`, keeping test bootstrap aligned with CI and preventing missing-relation failures.
   - Replace database-drop reset logic in `PostgresDatabaseFixture` with in-database schema reset so CI does not kill the Postgres container and surface `57P01` during economy/repository integration tests.
   - Isolate the destructive `DROP SCHEMA ... CASCADE` reset in its own short-lived connection so migration/seed/test queries never reuse a session that PostgreSQL terminated during schema reset.
+- **Current follow-up fix scope (2026-03-20):**
+  - Repair only the shared PostgreSQL test reset path on current main so backend checks stop failing after the merged Phase 1D migration chain changes.
+  - Keep the change set limited to the fixture and any strictly required regression assertion updates.
 - **Last updated:** 2026-03-20
 
 ---

@@ -37,6 +37,8 @@ public sealed class PostgresDatabaseFixture : IAsyncLifetime
 
         var nonPoolingConnectionString = new NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = false }.ConnectionString;
 
+        NpgsqlConnection.ClearAllPools();
+
         await using (var resetConnection = new NpgsqlConnection(nonPoolingConnectionString))
         {
             await resetConnection.OpenAsync();
