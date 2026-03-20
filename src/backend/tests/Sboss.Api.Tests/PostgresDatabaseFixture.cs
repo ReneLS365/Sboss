@@ -4,16 +4,27 @@ namespace Sboss.Api.Tests;
 
 public sealed class PostgresDatabaseFixture : IAsyncLifetime
 {
+    private static readonly string[] MigrationFiles =
+    {
+        "src/backend/db/migrations/0001_phase_1b_baseline.sql",
+        "src/backend/db/migrations/0002_phase_1d_economy_tables.sql"
+    };
+
     public string ConnectionString { get; private set; } = string.Empty;
 
     public async Task InitializeAsync()
     {
         ConnectionString = ResolveConnectionString();
-        await ResetDatabaseAsync();
+        await ResetAsync();
         Environment.SetEnvironmentVariable("ConnectionStrings__Default", ConnectionString);
     }
 
     public Task DisposeAsync() => Task.CompletedTask;
+
+    public Task ResetAsync()
+    {
+        return ResetDatabaseAsync();
+    }
 
     private async Task ResetDatabaseAsync()
     {
@@ -24,46 +35,30 @@ public sealed class PostgresDatabaseFixture : IAsyncLifetime
             throw new InvalidOperationException("A database name is required for repository integration tests.");
         }
 
-        var adminBuilder = new NpgsqlConnectionStringBuilder(ConnectionString)
+        var nonPoolingConnectionString = new NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = false }.ConnectionString;
+
+        await using (var resetConnection = new NpgsqlConnection(nonPoolingConnectionString))
         {
-            Database = "postgres",
-            Pooling = false
-        };
+            await resetConnection.OpenAsync();
 
-        await using (var adminConnection = new NpgsqlConnection(adminBuilder.ConnectionString))
-        {
-            await adminConnection.OpenAsync();
-            await using (var terminateCommand = adminConnection.CreateCommand())
-            {
-                terminateCommand.CommandText = """
-                    SELECT pg_terminate_backend(pid)
-                    FROM pg_stat_activity
-                    WHERE datname = @databaseName
-                      AND pid <> pg_backend_pid();
-                    """;
-                terminateCommand.Parameters.AddWithValue("databaseName", databaseName);
-                await terminateCommand.ExecuteNonQueryAsync();
-            }
-
-            await using (var dropCommand = adminConnection.CreateCommand())
-            {
-                dropCommand.CommandText = $"DROP DATABASE IF EXISTS \"{databaseName}\";";
-                await dropCommand.ExecuteNonQueryAsync();
-            }
-
-            await using var createCommand = adminConnection.CreateCommand();
-            createCommand.CommandText = $"CREATE DATABASE \"{databaseName}\";";
-            await createCommand.ExecuteNonQueryAsync();
+            await using var resetSchemaCommand = resetConnection.CreateCommand();
+            resetSchemaCommand.CommandText = """
+                DROP SCHEMA IF EXISTS public CASCADE;
+                CREATE SCHEMA public;
+                GRANT ALL ON SCHEMA public TO CURRENT_USER;
+                GRANT ALL ON SCHEMA public TO PUBLIC;
+                """;
+            await resetSchemaCommand.ExecuteNonQueryAsync();
         }
 
-        await using var targetConnection = new NpgsqlConnection(new NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = false }.ConnectionString);
+        await using var targetConnection = new NpgsqlConnection(nonPoolingConnectionString);
         await targetConnection.OpenAsync();
 
-        var migrationSql = await File.ReadAllTextAsync(ResolveRepoPath("src/backend/db/migrations/0001_phase_1b_baseline.sql"));
         var seedSql = await File.ReadAllTextAsync(ResolveRepoPath("src/backend/db/seed.sql"));
-
-        await using (var migrationCommand = targetConnection.CreateCommand())
+        foreach (var migrationFile in MigrationFiles)
         {
+            var migrationSql = await File.ReadAllTextAsync(ResolveRepoPath(migrationFile));
+            await using var migrationCommand = targetConnection.CreateCommand();
             migrationCommand.CommandText = migrationSql;
             await migrationCommand.ExecuteNonQueryAsync();
         }

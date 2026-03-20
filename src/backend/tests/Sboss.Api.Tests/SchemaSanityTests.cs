@@ -5,9 +5,10 @@ public sealed class SchemaSanityTests
     private const string ActiveSeasonId = "cccccccc-cccc-cccc-cccc-cccccccccccc";
     private const string KnownLevelSeedId = "dddddddd-dddd-dddd-dddd-dddddddddddd";
     private const string BaselineMigrationFileName = "0001_phase_1b_baseline.sql";
+    private const string EconomyMigrationFileName = "0002_phase_1d_economy_tables.sql";
 
     [Fact]
-    public void BaselineMigrationContainsRequiredTables()
+    public void BaselineMigrationContainsPhase1BTables()
     {
         var migrationPath = ResolveMigrationPath(BaselineMigrationFileName);
         var migration = File.ReadAllText(migrationPath);
@@ -31,14 +32,25 @@ public sealed class SchemaSanityTests
     }
 
     [Fact]
+    public void EconomyMigrationContainsRequiredTables()
+    {
+        var migrationPath = ResolveMigrationPath(EconomyMigrationFileName);
+        var migration = File.ReadAllText(migrationPath);
+
+        Assert.Contains("CREATE TABLE IF NOT EXISTS account_balances", migration, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("CREATE TABLE IF NOT EXISTS economy_transactions", migration, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("resulting_balance_version", migration, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void SchemaSnapshotMatchesBaselineMigration()
     {
         var schema = NormalizeWhitespace(File.ReadAllText(ResolveSchemaPath()));
-        var migration = File.ReadAllText(ResolveMigrationPath(BaselineMigrationFileName));
-
-        var requiredStatements = migration
-            .Split(";", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(statement => NormalizeWhitespace(statement))
+        var requiredStatements = new[] { BaselineMigrationFileName, EconomyMigrationFileName }
+            .Select(ResolveMigrationPath)
+            .SelectMany(path => File.ReadAllText(path)
+                .Split(";", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(statement => NormalizeWhitespace(statement)))
             .Where(statement => statement.StartsWith("CREATE ", StringComparison.OrdinalIgnoreCase))
             .ToArray();
 
@@ -60,6 +72,14 @@ public sealed class SchemaSanityTests
             StringComparison.OrdinalIgnoreCase);
         Assert.Contains(
             NormalizeWhitespace("INSERT INTO level_seeds (level_seed_id, seed_value, biome, template, objective, modifiers_json, par_time_ms, gold_time_ms, version, created_at, updated_at) VALUES ('dddddddd-dddd-dddd-dddd-dddddddddddd', 'SBOSS-SEED-001', 'urban', 'template_alpha', 'reach_target', '{\"modifiers\":[\"none\"]}', 120000, 90000, 1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')"),
+            seed,
+            StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(
+            NormalizeWhitespace("INSERT INTO account_balances (account_id, currency_code, balance, created_at, updated_at, version) VALUES ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'COIN', 100, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 1)"),
+            seed,
+            StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(
+            NormalizeWhitespace("INSERT INTO economy_transactions (economy_transaction_id, account_id, currency_code, idempotency_key, amount_delta, resulting_balance, resulting_balance_version, reason, created_at, version) VALUES ('98989898-9898-9898-9898-989898989898', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'COIN', 'seed-opening-balance', 100, 100, 1, 'seed_opening_balance', '2026-01-01T00:00:00Z', 1)"),
             seed,
             StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("NOW()", seed, StringComparison.OrdinalIgnoreCase);
@@ -84,6 +104,31 @@ public sealed class SchemaSanityTests
         Assert.DoesNotContain("@localhost", dockerInit, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("apply-migrations.sh", dockerInit, StringComparison.Ordinal);
         Assert.Contains("apply-seed.sh", dockerInit, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void PostgresTestFixture_AppliesFullMigrationChainBeforeSeed()
+    {
+        var fixture = File.ReadAllText(ResolveTestFilePath("PostgresDatabaseFixture.cs"));
+
+        Assert.Contains("0001_phase_1b_baseline.sql", fixture, StringComparison.Ordinal);
+        Assert.Contains("0002_phase_1d_economy_tables.sql", fixture, StringComparison.Ordinal);
+        Assert.Contains("src/backend/db/seed.sql", fixture, StringComparison.Ordinal);
+        Assert.Contains("DROP SCHEMA IF EXISTS public CASCADE;", fixture, StringComparison.Ordinal);
+        Assert.Contains("CREATE SCHEMA public;", fixture, StringComparison.Ordinal);
+        Assert.Contains("resetConnection", fixture, StringComparison.Ordinal);
+        Assert.DoesNotContain("pg_terminate_backend", fixture, StringComparison.Ordinal);
+        Assert.DoesNotContain("DROP DATABASE IF EXISTS", fixture, StringComparison.Ordinal);
+
+        var resetConnectionIndex = fixture.IndexOf("resetConnection", StringComparison.Ordinal);
+        var baselineIndex = fixture.IndexOf("0001_phase_1b_baseline.sql", StringComparison.Ordinal);
+        var economyIndex = fixture.IndexOf("0002_phase_1d_economy_tables.sql", StringComparison.Ordinal);
+        var targetConnectionIndex = fixture.IndexOf("targetConnection", StringComparison.Ordinal);
+        var seedIndex = fixture.IndexOf("src/backend/db/seed.sql", StringComparison.Ordinal);
+
+        Assert.True(targetConnectionIndex > resetConnectionIndex, "Fixture must open a fresh connection after schema reset before running migrations.");
+        Assert.True(baselineIndex >= 0 && economyIndex > baselineIndex, "Fixture must apply the 1D economy migration after the Phase 1B baseline.");
+        Assert.True(seedIndex > economyIndex, "Fixture must load seed.sql only after the full migration chain.");
     }
 
     private static string ResolveSchemaPath()
@@ -156,6 +201,24 @@ public sealed class SchemaSanityTests
         }
 
         throw new FileNotFoundException($"Unable to locate db/scripts/{scriptFileName} by traversing parent directories.");
+    }
+
+    private static string ResolveTestFilePath(string fileName)
+    {
+        var current = new DirectoryInfo(AppContext.BaseDirectory);
+
+        while (current is not null)
+        {
+            var candidate = Path.Combine(current.FullName, fileName);
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+
+            current = current.Parent;
+        }
+
+        throw new FileNotFoundException($"Unable to locate test file '{fileName}' by traversing parent directories.");
     }
 
     private static string NormalizeWhitespace(string value)
