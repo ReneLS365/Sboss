@@ -1,4 +1,5 @@
 using Npgsql;
+using Sboss.Infrastructure;
 
 namespace Sboss.Api.Tests;
 
@@ -37,6 +38,7 @@ public sealed class PostgresDatabaseFixture : IAsyncLifetime
 
         var nonPoolingConnectionString = new NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = false }.ConnectionString;
 
+        NpgsqlDataSourceRegistry.ClearTrackedPools();
         NpgsqlConnection.ClearAllPools();
 
         await using (var resetConnection = new NpgsqlConnection(nonPoolingConnectionString))

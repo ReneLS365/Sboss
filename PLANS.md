@@ -218,6 +218,9 @@
 - **Current follow-up fix scope (2026-03-20):**
   - Repair only the shared PostgreSQL test reset path on current main so backend checks stop failing after the merged Phase 1D migration chain changes.
   - Keep the change set limited to the fixture and any strictly required regression assertion updates.
+- **Codex review follow-up (2026-03-20):**
+  - Clear tracked `NpgsqlDataSource` pools used by the app-under-test and repository integration tests before the destructive schema reset, because `NpgsqlConnection.ClearAllPools()` does not drain direct `NpgsqlDataSource` pools.
+  - Add/update regression coverage so the fixture guardrails enforce both tracked data-source clearing and the existing migration/seed ordering.
 - **Last updated:** 2026-03-20
 
 ---

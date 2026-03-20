@@ -116,17 +116,22 @@ public sealed class SchemaSanityTests
         Assert.Contains("src/backend/db/seed.sql", fixture, StringComparison.Ordinal);
         Assert.Contains("DROP SCHEMA IF EXISTS public CASCADE;", fixture, StringComparison.Ordinal);
         Assert.Contains("CREATE SCHEMA public;", fixture, StringComparison.Ordinal);
+        Assert.Contains("NpgsqlDataSourceRegistry.ClearTrackedPools();", fixture, StringComparison.Ordinal);
         Assert.Contains("NpgsqlConnection.ClearAllPools();", fixture, StringComparison.Ordinal);
         Assert.Contains("resetConnection", fixture, StringComparison.Ordinal);
         Assert.DoesNotContain("pg_terminate_backend", fixture, StringComparison.Ordinal);
         Assert.DoesNotContain("DROP DATABASE IF EXISTS", fixture, StringComparison.Ordinal);
 
+        var trackedPoolIndex = fixture.IndexOf("NpgsqlDataSourceRegistry.ClearTrackedPools();", StringComparison.Ordinal);
+        var clearAllPoolsIndex = fixture.IndexOf("NpgsqlConnection.ClearAllPools();", StringComparison.Ordinal);
         var resetConnectionIndex = fixture.IndexOf("resetConnection", StringComparison.Ordinal);
         var baselineIndex = fixture.IndexOf("0001_phase_1b_baseline.sql", StringComparison.Ordinal);
         var economyIndex = fixture.IndexOf("0002_phase_1d_economy_tables.sql", StringComparison.Ordinal);
         var targetConnectionIndex = fixture.IndexOf("targetConnection", StringComparison.Ordinal);
         var seedIndex = fixture.IndexOf("src/backend/db/seed.sql", StringComparison.Ordinal);
 
+        Assert.True(trackedPoolIndex >= 0 && clearAllPoolsIndex > trackedPoolIndex, "Fixture must clear tracked NpgsqlDataSource pools before clearing global connection pools.");
+        Assert.True(resetConnectionIndex > clearAllPoolsIndex, "Fixture must clear all pools before opening the schema-reset connection.");
         Assert.True(targetConnectionIndex > resetConnectionIndex, "Fixture must open a fresh connection after schema reset before running migrations.");
         Assert.True(baselineIndex >= 0 && economyIndex > baselineIndex, "Fixture must apply the 1D economy migration after the Phase 1B baseline.");
         Assert.True(seedIndex > economyIndex, "Fixture must load seed.sql only after the full migration chain.");
