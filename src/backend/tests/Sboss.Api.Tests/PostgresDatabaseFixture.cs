@@ -35,40 +35,19 @@ public sealed class PostgresDatabaseFixture : IAsyncLifetime
             throw new InvalidOperationException("A database name is required for repository integration tests.");
         }
 
-        var adminBuilder = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            Database = "postgres",
-            Pooling = false
-        };
-
-        await using (var adminConnection = new NpgsqlConnection(adminBuilder.ConnectionString))
-        {
-            await adminConnection.OpenAsync();
-            await using (var terminateCommand = adminConnection.CreateCommand())
-            {
-                terminateCommand.CommandText = """
-                    SELECT pg_terminate_backend(pid)
-                    FROM pg_stat_activity
-                    WHERE datname = @databaseName
-                      AND pid <> pg_backend_pid();
-                    """;
-                terminateCommand.Parameters.AddWithValue("databaseName", databaseName);
-                await terminateCommand.ExecuteNonQueryAsync();
-            }
-
-            await using (var dropCommand = adminConnection.CreateCommand())
-            {
-                dropCommand.CommandText = $"DROP DATABASE IF EXISTS \"{databaseName}\";";
-                await dropCommand.ExecuteNonQueryAsync();
-            }
-
-            await using var createCommand = adminConnection.CreateCommand();
-            createCommand.CommandText = $"CREATE DATABASE \"{databaseName}\";";
-            await createCommand.ExecuteNonQueryAsync();
-        }
-
         await using var targetConnection = new NpgsqlConnection(new NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = false }.ConnectionString);
         await targetConnection.OpenAsync();
+
+        await using (var resetSchemaCommand = targetConnection.CreateCommand())
+        {
+            resetSchemaCommand.CommandText = """
+                DROP SCHEMA IF EXISTS public CASCADE;
+                CREATE SCHEMA public;
+                GRANT ALL ON SCHEMA public TO CURRENT_USER;
+                GRANT ALL ON SCHEMA public TO PUBLIC;
+                """;
+            await resetSchemaCommand.ExecuteNonQueryAsync();
+        }
 
         var seedSql = await File.ReadAllTextAsync(ResolveRepoPath("src/backend/db/seed.sql"));
         foreach (var migrationFile in MigrationFiles)

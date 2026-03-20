@@ -114,6 +114,10 @@ public sealed class SchemaSanityTests
         Assert.Contains("0001_phase_1b_baseline.sql", fixture, StringComparison.Ordinal);
         Assert.Contains("0002_phase_1d_economy_tables.sql", fixture, StringComparison.Ordinal);
         Assert.Contains("src/backend/db/seed.sql", fixture, StringComparison.Ordinal);
+        Assert.Contains("DROP SCHEMA IF EXISTS public CASCADE;", fixture, StringComparison.Ordinal);
+        Assert.Contains("CREATE SCHEMA public;", fixture, StringComparison.Ordinal);
+        Assert.DoesNotContain("pg_terminate_backend", fixture, StringComparison.Ordinal);
+        Assert.DoesNotContain("DROP DATABASE IF EXISTS", fixture, StringComparison.Ordinal);
 
         var baselineIndex = fixture.IndexOf("0001_phase_1b_baseline.sql", StringComparison.Ordinal);
         var economyIndex = fixture.IndexOf("0002_phase_1d_economy_tables.sql", StringComparison.Ordinal);
