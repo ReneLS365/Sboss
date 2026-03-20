@@ -165,7 +165,10 @@
   - Automated validation fails on roadmap/status drift and runs in CI.
   - Current API/build/test validation succeeds before task completion is recorded.
 - **Blockers:** None recorded.
-- **Last updated:** 2026-03-19
+- **Follow-up review actions (2026-03-20):**
+  - Fix the roadmap-status guardrail so it derives the active phase section from `docs/MASTER_STATUS.md` and allows `Next task` to point at the step after an `IN_PROGRESS` task.
+  - Refuse to run repository integration test database resets unless `SBOSS_TEST_DATABASE` is explicitly set to a non-development database.
+- **Last updated:** 2026-03-20
 
 ---
 

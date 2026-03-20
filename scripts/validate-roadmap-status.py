@@ -10,6 +10,7 @@ FIELD_RE = re.compile(r"^- \*\*(?P<name>[^:]+):\*\*\s*(?P<value>.*)$", re.MULTIL
 MASTER_TASK_RE = re.compile(r"^- \[(?P<done>[ xX])\]\s+(?P<step>\d+[A-Z])(?:\s+[—-])?\s+(?P<title>.+)$")
 CURRENT_TASK_RE = re.compile(r"^- Current task:\s+\*\*(?P<step>\d+[A-Z])\s+[—-]\s+(?P<title>.+)\*\*$", re.MULTILINE)
 NEXT_TASK_RE = re.compile(r"^- Next task:\s+\*\*(?P<step>\d+[A-Z])\s+[—-]\s+(?P<title>.+)\*\*$", re.MULTILINE)
+CURRENT_PHASE_RE = re.compile(r"^- Current phase:\s+\*\*Phase\s+(?P<phase>\d+)\s+[—-]\s+(?P<title>.+)\*\*$", re.MULTILINE)
 STEP_FROM_TITLE_RE = re.compile(r"Phase\s+(?P<step>\d+[A-Z])\b", re.IGNORECASE)
 STEP_FROM_ID_RE = re.compile(r"P(?P<step>\d+[A-Z])\b", re.IGNORECASE)
 
@@ -53,9 +54,15 @@ def derive_step(task_id: str, title: str):
 
 
 def extract_master_phase_tasks(text: str):
-    phase_match = re.search(r"## Phase 1 — Authoritative Core Domain\n(?P<body>.*?)(?:\n## Phase 2|\Z)", text, re.S)
+    current_phase_match = CURRENT_PHASE_RE.search(text)
+    if not current_phase_match:
+        raise ValueError("Unable to locate the current phase entry in docs/MASTER_STATUS.md.")
+
+    phase_number = current_phase_match.group('phase')
+    phase_pattern = rf"## Phase {phase_number} — [^\n]+\n(?P<body>.*?)(?:\n## Phase \d+|\Z)"
+    phase_match = re.search(phase_pattern, text, re.S)
     if not phase_match:
-        raise ValueError("Unable to locate Phase 1 task list in docs/MASTER_STATUS.md.")
+        raise ValueError(f"Unable to locate Phase {phase_number} task list in docs/MASTER_STATUS.md.")
     phase_body = phase_match.group('body')
     tasks = []
     for line in phase_body.splitlines():
@@ -134,7 +141,7 @@ def main():
 
     require(active_task.step == current_step, 'docs/MASTER_STATUS.md Current task does not match the active PLANS task.')
 
-    expected_next = active_task.step if active_task.status == 'IN_PROGRESS' else roadmap_steps[active_index + 1] if active_index + 1 < len(roadmap_steps) else active_task.step
+    expected_next = roadmap_steps[active_index + 1] if active_index + 1 < len(roadmap_steps) else active_task.step
     require(next_step == expected_next, 'docs/MASTER_STATUS.md Next task skips ahead or reorders the roadmap.')
 
     for task in master_tasks:

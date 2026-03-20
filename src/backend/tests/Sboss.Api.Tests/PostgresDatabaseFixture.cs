@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Configuration;
 using Npgsql;
 
 namespace Sboss.Api.Tests;
@@ -78,14 +77,21 @@ public sealed class PostgresDatabaseFixture : IAsyncLifetime
 
     private static string ResolveConnectionString()
     {
-        var configuration = new ConfigurationBuilder()
-            .AddJsonFile(ResolveRepoPath("src/backend/Sboss.Api/appsettings.json"), optional: false)
-            .AddEnvironmentVariables()
-            .Build();
+        var connectionString = Environment.GetEnvironmentVariable("SBOSS_TEST_DATABASE");
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new InvalidOperationException(
+                "SBOSS_TEST_DATABASE must be set to an isolated PostgreSQL database before running repository integration tests.");
+        }
 
-        return Environment.GetEnvironmentVariable("SBOSS_TEST_DATABASE")
-            ?? configuration.GetConnectionString("Default")
-            ?? throw new InvalidOperationException("Unable to resolve a PostgreSQL test connection string.");
+        var builder = new NpgsqlConnectionStringBuilder(connectionString);
+        if (string.Equals(builder.Database, "sboss", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                "SBOSS_TEST_DATABASE must not target the default 'sboss' development database.");
+        }
+
+        return connectionString;
     }
 
     private static string ResolveRepoPath(string relativePath)
