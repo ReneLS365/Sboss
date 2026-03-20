@@ -221,6 +221,10 @@
 - **Codex review follow-up (2026-03-20):**
   - Clear tracked `NpgsqlDataSource` pools used by the app-under-test and repository integration tests before the destructive schema reset, because `NpgsqlConnection.ClearAllPools()` does not drain direct `NpgsqlDataSource` pools.
   - Add/update regression coverage so the fixture guardrails enforce both tracked data-source clearing and the existing migration/seed ordering.
+- **Compile-break follow-up (2026-03-20):**
+  - Remove the unsupported direct `NpgsqlDataSource.Clear()` usage from `NpgsqlDataSourceRegistry`, which fails to compile against the pinned Npgsql `8.0.4` package in this repo.
+  - Replace tracked data-source cleanup with supported tracked data-source disposal before `NpgsqlConnection.ClearAllPools()` so the reset path still tears down direct `NpgsqlDataSource` pools used by tests and the app host.
+  - Keep scope limited to the PostgreSQL test reset follow-up fix plus any strictly required regression assertions.
 - **Last updated:** 2026-03-20
 
 ---

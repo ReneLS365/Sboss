@@ -14,17 +14,19 @@ public static class NpgsqlDataSourceRegistry
         return dataSource;
     }
 
-    public static void ClearTrackedPools()
+    public static async Task DisposeTrackedDataSourcesAsync()
     {
         foreach (var entry in DataSources)
         {
             if (entry.Value.TryGetTarget(out var dataSource))
             {
-                dataSource.Clear();
-                continue;
+                DataSources.TryRemove(entry.Key, out _);
+                await dataSource.DisposeAsync().ConfigureAwait(false);
             }
-
-            DataSources.TryRemove(entry.Key, out _);
+            else
+            {
+                DataSources.TryRemove(entry.Key, out _);
+            }
         }
     }
 }
