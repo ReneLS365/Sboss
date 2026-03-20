@@ -1,5 +1,6 @@
 using Npgsql;
 using Sboss.Domain.Entities;
+using Sboss.Infrastructure;
 using Sboss.Infrastructure.Repositories;
 using System.Text.Json;
 
@@ -21,7 +22,7 @@ public sealed class RepositoryIntegrationTests
     [Fact]
     public async Task AccountRepository_ReadsSeededDomainEntity()
     {
-        await using var dataSource = NpgsqlDataSource.Create(_database.ConnectionString);
+        await using var dataSource = NpgsqlDataSourceRegistry.Create(_database.ConnectionString);
         var repository = new PostgresAccountRepository(dataSource);
 
         var account = await repository.GetByIdAsync(AccountId, CancellationToken.None);
@@ -35,7 +36,7 @@ public sealed class RepositoryIntegrationTests
     [Fact]
     public async Task SeasonRepository_ReadsCurrentSeededSeason()
     {
-        await using var dataSource = NpgsqlDataSource.Create(_database.ConnectionString);
+        await using var dataSource = NpgsqlDataSourceRegistry.Create(_database.ConnectionString);
         var repository = new PostgresSeasonRepository(dataSource);
 
         var season = await repository.GetCurrentSeasonAsync(CancellationToken.None);
@@ -49,7 +50,7 @@ public sealed class RepositoryIntegrationTests
     [Fact]
     public async Task LevelSeedRepository_ReadsSeededLevelSeed()
     {
-        await using var dataSource = NpgsqlDataSource.Create(_database.ConnectionString);
+        await using var dataSource = NpgsqlDataSourceRegistry.Create(_database.ConnectionString);
         var repository = new PostgresLevelSeedRepository(dataSource);
 
         var seed = await repository.GetByIdAsync(LevelSeedId, CancellationToken.None);
@@ -64,7 +65,7 @@ public sealed class RepositoryIntegrationTests
     [Fact]
     public async Task MatchResultRepository_RoundTripsDomainEntityAgainstMigrationBaseline()
     {
-        await using var dataSource = NpgsqlDataSource.Create(_database.ConnectionString);
+        await using var dataSource = NpgsqlDataSourceRegistry.Create(_database.ConnectionString);
         var repository = new PostgresMatchResultRepository(dataSource);
         var createdAt = DateTimeOffset.Parse("2026-03-19T00:00:00Z");
         var matchResult = MatchResult.Create(AccountId, SeasonId, LevelSeedId, 4321, 87000, 15, 1, createdAt);
