@@ -21,6 +21,8 @@ public sealed class SchemaSanityTests
             "level_seeds",
             "seasons",
             "cosmetic_unlocks",
+            "account_balances",
+            "economy_transactions",
             "match_results"
         };
 
@@ -60,6 +62,14 @@ public sealed class SchemaSanityTests
             StringComparison.OrdinalIgnoreCase);
         Assert.Contains(
             NormalizeWhitespace("INSERT INTO level_seeds (level_seed_id, seed_value, biome, template, objective, modifiers_json, par_time_ms, gold_time_ms, version, created_at, updated_at) VALUES ('dddddddd-dddd-dddd-dddd-dddddddddddd', 'SBOSS-SEED-001', 'urban', 'template_alpha', 'reach_target', '{\"modifiers\":[\"none\"]}', 120000, 90000, 1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')"),
+            seed,
+            StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(
+            NormalizeWhitespace("INSERT INTO account_balances (account_id, currency_code, balance, created_at, updated_at, version) VALUES ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'COIN', 100, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 1)"),
+            seed,
+            StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(
+            NormalizeWhitespace("INSERT INTO economy_transactions (economy_transaction_id, account_id, currency_code, idempotency_key, amount_delta, resulting_balance, reason, created_at, version) VALUES ('98989898-9898-9898-9898-989898989898', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'COIN', 'seed-opening-balance', 100, 100, 'seed_opening_balance', '2026-01-01T00:00:00Z', 1)"),
             seed,
             StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("NOW()", seed, StringComparison.OrdinalIgnoreCase);

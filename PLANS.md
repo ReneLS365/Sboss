@@ -137,7 +137,7 @@
 - **Phase:** Phase 1 — Authoritative Core Domain
 - **Status:** DONE
 - **Branch:** work
-- **PR:** Draft PR prepared via make_pr
+- **PR:** #11 (merged)
 - **Scope:**
   - Repair status tracking so merged Phase 1B work is reflected correctly before new implementation proceeds.
   - Implement explicit PostgreSQL-backed repositories for Account, Season, LevelSeed, and MatchResult aligned to the current authoritative backend HTTP slice.
@@ -176,19 +176,40 @@
 - **Task ID:** P1D-ECONOMY-TRANSACTION-SERVICE
 - **Title:** Phase 1D economy transaction service
 - **Phase:** Phase 1 — Authoritative Core Domain
-- **Status:** NEXT
-- **Branch:** TBD
-- **PR:** Not started
+- **Status:** IN_PROGRESS
+- **Branch:** work
+- **PR:** Draft PR prepared via make_pr
 - **Scope:**
-  - Implement the roadmap item `1D Economy transaction service` after Phase 1C is merged.
+  - Update roadmap tracking so Phase 1D is the active task after merged Phase 1C repository work.
+  - Add authoritative account balance state and an append-only economy transaction ledger in PostgreSQL.
+  - Implement strict idempotent backend-only economy mutation handling for credits and debits through a single service entry point.
+  - Expose one minimal HTTP write endpoint that calls the transaction service and add integration coverage for duplicate/replay/race safety.
 - **Allowed files:**
-  - To be defined when Phase 1D is formally started.
+  - `PLANS.md`
+  - `docs/MASTER_STATUS.md`
+  - `src/backend/Sboss.Api/**`
+  - `src/backend/Sboss.Contracts/**`
+  - `src/backend/Sboss.Domain/**`
+  - `src/backend/Sboss.Infrastructure/**`
+  - `src/backend/db/schema.sql`
+  - `src/backend/db/migrations/**`
+  - `src/backend/db/seed.sql`
+  - `src/backend/tests/Sboss.Api.Tests/**`
 - **Non-goals:**
-  - No work before Phase 1C is merged and promoted complete.
+  - No client or Unity authority for any balance or ledger mutation.
+  - No generic service-wrapper abstraction layer, no economy UI, and no Phase 1E job-state-machine work.
+  - No direct balance writes outside the economy transaction service.
+  - No inventory, market, contract payout, or progression feature expansion beyond the minimum authoritative write path.
 - **Acceptance criteria:**
-  - To be defined when the task is formally started.
-- **Blockers:** Depends on Phase 1C merge.
-- **Last updated:** 2026-03-19
+  - `account_balances` and `economy_transactions` exist in the canonical schema/migration path with append-only ledger behavior and unique idempotency protection.
+  - `IEconomyTransactionService` / `EconomyTransactionService` is the only backend write entry point for economy mutations and performs atomic balance + ledger updates.
+  - Duplicate retries return the original authoritative result without double-applying currency.
+  - Concurrent duplicate attempts do not create ledger dupes or balance inflation.
+  - Unknown accounts and insufficient funds are rejected without partial writes.
+  - Integration tests prove successful credit/debit, duplicate retry idempotency, concurrent duplicate safety, insufficient funds rejection, unknown account rejection, and ledger/balance consistency.
+  - Build and test validation pass before the task can be promoted beyond `IN_PROGRESS`.
+- **Blockers:** None recorded.
+- **Last updated:** 2026-03-20
 
 ---
 

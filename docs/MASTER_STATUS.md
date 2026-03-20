@@ -3,8 +3,8 @@
 ## Current Position
 - Current phase: **Phase 1 — Authoritative Core Domain**
 - Completed phase: **Phase 0 — Foundation / Bootstrap**
-- Current task: **1C — Core repositories**
-- Next task: **1D — Economy transaction service**
+- Current task: **1D — Economy transaction service**
+- Next task: **1E — Contract job state machine**
 
 ---
 

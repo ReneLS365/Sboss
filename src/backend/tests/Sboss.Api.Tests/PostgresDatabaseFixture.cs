@@ -9,11 +9,16 @@ public sealed class PostgresDatabaseFixture : IAsyncLifetime
     public async Task InitializeAsync()
     {
         ConnectionString = ResolveConnectionString();
-        await ResetDatabaseAsync();
+        await ResetAsync();
         Environment.SetEnvironmentVariable("ConnectionStrings__Default", ConnectionString);
     }
 
     public Task DisposeAsync() => Task.CompletedTask;
+
+    public Task ResetAsync()
+    {
+        return ResetDatabaseAsync();
+    }
 
     private async Task ResetDatabaseAsync()
     {
