@@ -4,6 +4,12 @@ namespace Sboss.Api.Tests;
 
 public sealed class PostgresDatabaseFixture : IAsyncLifetime
 {
+    private static readonly string[] MigrationFiles =
+    {
+        "src/backend/db/migrations/0001_phase_1b_baseline.sql",
+        "src/backend/db/migrations/0002_phase_1d_economy_tables.sql"
+    };
+
     public string ConnectionString { get; private set; } = string.Empty;
 
     public async Task InitializeAsync()
@@ -64,11 +70,11 @@ public sealed class PostgresDatabaseFixture : IAsyncLifetime
         await using var targetConnection = new NpgsqlConnection(new NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = false }.ConnectionString);
         await targetConnection.OpenAsync();
 
-        var migrationSql = await File.ReadAllTextAsync(ResolveRepoPath("src/backend/db/migrations/0001_phase_1b_baseline.sql"));
         var seedSql = await File.ReadAllTextAsync(ResolveRepoPath("src/backend/db/seed.sql"));
-
-        await using (var migrationCommand = targetConnection.CreateCommand())
+        foreach (var migrationFile in MigrationFiles)
         {
+            var migrationSql = await File.ReadAllTextAsync(ResolveRepoPath(migrationFile));
+            await using var migrationCommand = targetConnection.CreateCommand();
             migrationCommand.CommandText = migrationSql;
             await migrationCommand.ExecuteNonQueryAsync();
         }

@@ -212,6 +212,7 @@
 - **Follow-up review actions (2026-03-20):**
   - Restore `src/backend/db/migrations/0001_phase_1b_baseline.sql` to the original Phase 1B baseline and ship economy tables/constraints via a new forward-only migration so checksum-based upgrades remain valid.
   - Persist and replay the original authoritative balance snapshot for idempotent economy retries so duplicate responses cannot drift after later balance changes.
+  - Fix `src/backend/tests/Sboss.Api.Tests/PostgresDatabaseFixture.cs` so the shared PostgreSQL test reset applies the full 1D migration chain (`0001`, then `0002`) before `seed.sql`, keeping test bootstrap aligned with CI and preventing missing-relation failures.
 - **Last updated:** 2026-03-20
 
 ---

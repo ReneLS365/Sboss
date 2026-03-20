@@ -106,6 +106,23 @@ public sealed class SchemaSanityTests
         Assert.Contains("apply-seed.sh", dockerInit, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void PostgresTestFixture_AppliesFullMigrationChainBeforeSeed()
+    {
+        var fixture = File.ReadAllText(ResolveTestFilePath("PostgresDatabaseFixture.cs"));
+
+        Assert.Contains("0001_phase_1b_baseline.sql", fixture, StringComparison.Ordinal);
+        Assert.Contains("0002_phase_1d_economy_tables.sql", fixture, StringComparison.Ordinal);
+        Assert.Contains("src/backend/db/seed.sql", fixture, StringComparison.Ordinal);
+
+        var baselineIndex = fixture.IndexOf("0001_phase_1b_baseline.sql", StringComparison.Ordinal);
+        var economyIndex = fixture.IndexOf("0002_phase_1d_economy_tables.sql", StringComparison.Ordinal);
+        var seedIndex = fixture.IndexOf("src/backend/db/seed.sql", StringComparison.Ordinal);
+
+        Assert.True(baselineIndex >= 0 && economyIndex > baselineIndex, "Fixture must apply the 1D economy migration after the Phase 1B baseline.");
+        Assert.True(seedIndex > economyIndex, "Fixture must load seed.sql only after the full migration chain.");
+    }
+
     private static string ResolveSchemaPath()
     {
         var current = new DirectoryInfo(AppContext.BaseDirectory);
@@ -176,6 +193,24 @@ public sealed class SchemaSanityTests
         }
 
         throw new FileNotFoundException($"Unable to locate db/scripts/{scriptFileName} by traversing parent directories.");
+    }
+
+    private static string ResolveTestFilePath(string fileName)
+    {
+        var current = new DirectoryInfo(AppContext.BaseDirectory);
+
+        while (current is not null)
+        {
+            var candidate = Path.Combine(current.FullName, fileName);
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+
+            current = current.Parent;
+        }
+
+        throw new FileNotFoundException($"Unable to locate test file '{fileName}' by traversing parent directories.");
     }
 
     private static string NormalizeWhitespace(string value)
