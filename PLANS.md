@@ -214,6 +214,7 @@
   - Persist and replay the original authoritative balance snapshot for idempotent economy retries so duplicate responses cannot drift after later balance changes.
   - Fix `src/backend/tests/Sboss.Api.Tests/PostgresDatabaseFixture.cs` so the shared PostgreSQL test reset applies the full 1D migration chain (`0001`, then `0002`) before `seed.sql`, keeping test bootstrap aligned with CI and preventing missing-relation failures.
   - Replace database-drop reset logic in `PostgresDatabaseFixture` with in-database schema reset so CI does not kill the Postgres container and surface `57P01` during economy/repository integration tests.
+  - Isolate the destructive `DROP SCHEMA ... CASCADE` reset in its own short-lived connection so migration/seed/test queries never reuse a session that PostgreSQL terminated during schema reset.
 - **Last updated:** 2026-03-20
 
 ---

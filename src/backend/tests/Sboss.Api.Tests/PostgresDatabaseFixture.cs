@@ -35,11 +35,13 @@ public sealed class PostgresDatabaseFixture : IAsyncLifetime
             throw new InvalidOperationException("A database name is required for repository integration tests.");
         }
 
-        await using var targetConnection = new NpgsqlConnection(new NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = false }.ConnectionString);
-        await targetConnection.OpenAsync();
+        var nonPoolingConnectionString = new NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = false }.ConnectionString;
 
-        await using (var resetSchemaCommand = targetConnection.CreateCommand())
+        await using (var resetConnection = new NpgsqlConnection(nonPoolingConnectionString))
         {
+            await resetConnection.OpenAsync();
+
+            await using var resetSchemaCommand = resetConnection.CreateCommand();
             resetSchemaCommand.CommandText = """
                 DROP SCHEMA IF EXISTS public CASCADE;
                 CREATE SCHEMA public;
@@ -48,6 +50,9 @@ public sealed class PostgresDatabaseFixture : IAsyncLifetime
                 """;
             await resetSchemaCommand.ExecuteNonQueryAsync();
         }
+
+        await using var targetConnection = new NpgsqlConnection(nonPoolingConnectionString);
+        await targetConnection.OpenAsync();
 
         var seedSql = await File.ReadAllTextAsync(ResolveRepoPath("src/backend/db/seed.sql"));
         foreach (var migrationFile in MigrationFiles)
