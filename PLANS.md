@@ -209,6 +209,9 @@
   - Integration tests prove successful credit/debit, duplicate retry idempotency, concurrent duplicate safety, insufficient funds rejection, unknown account rejection, and ledger/balance consistency.
   - Build and test validation pass before the task can be promoted beyond `IN_PROGRESS`.
 - **Blockers:** None recorded.
+- **Follow-up review actions (2026-03-20):**
+  - Restore `src/backend/db/migrations/0001_phase_1b_baseline.sql` to the original Phase 1B baseline and ship economy tables/constraints via a new forward-only migration so checksum-based upgrades remain valid.
+  - Persist and replay the original authoritative balance snapshot for idempotent economy retries so duplicate responses cannot drift after later balance changes.
 - **Last updated:** 2026-03-20
 
 ---

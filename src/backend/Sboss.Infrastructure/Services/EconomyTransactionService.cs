@@ -31,21 +31,8 @@ public sealed class EconomyTransactionService : IEconomyTransactionService
 
         if (existingTransaction is not null)
         {
-            var existingBalance = await GetBalanceAsync(
-                connection,
-                transaction,
-                existingTransaction.AccountId,
-                existingTransaction.CurrencyCode,
-                false,
-                cancellationToken);
-
-            if (existingBalance is null)
-            {
-                throw new InvalidOperationException("Existing idempotent economy transaction is missing its authoritative balance state.");
-            }
-
             await transaction.CommitAsync(cancellationToken);
-            return new EconomyTransactionResult(existingTransaction, existingBalance, true);
+            return new EconomyTransactionResult(existingTransaction, CreateReplayBalanceSnapshot(existingTransaction), true);
         }
 
         var accountExists = await AccountExistsAsync(connection, transaction, normalizedRequest.AccountId, cancellationToken);
@@ -90,7 +77,7 @@ public sealed class EconomyTransactionService : IEconomyTransactionService
                 connection,
                 transaction,
                 normalizedRequest,
-                resultingBalance,
+                updatedBalance,
                 timestamp,
                 cancellationToken);
         }
@@ -113,21 +100,8 @@ public sealed class EconomyTransactionService : IEconomyTransactionService
                 throw;
             }
 
-            var replayBalance = await GetBalanceAsync(
-                replayConnection,
-                replayTransaction,
-                replayTransactionRecord.AccountId,
-                replayTransactionRecord.CurrencyCode,
-                false,
-                cancellationToken);
-
-            if (replayBalance is null)
-            {
-                throw new InvalidOperationException("Existing idempotent economy transaction is missing its authoritative balance state.");
-            }
-
             await replayTransaction.CommitAsync(cancellationToken);
-            return new EconomyTransactionResult(replayTransactionRecord, replayBalance, true);
+            return new EconomyTransactionResult(replayTransactionRecord, CreateReplayBalanceSnapshot(replayTransactionRecord), true);
         }
 
         await transaction.CommitAsync(cancellationToken);
@@ -318,7 +292,7 @@ public sealed class EconomyTransactionService : IEconomyTransactionService
         NpgsqlConnection connection,
         NpgsqlTransaction transaction,
         EconomyMutationRequest request,
-        long resultingBalance,
+        AccountBalance updatedBalance,
         DateTimeOffset timestamp,
         CancellationToken cancellationToken)
     {
@@ -330,6 +304,7 @@ public sealed class EconomyTransactionService : IEconomyTransactionService
                 idempotency_key,
                 amount_delta,
                 resulting_balance,
+                resulting_balance_version,
                 reason,
                 created_at,
                 version)
@@ -340,10 +315,11 @@ public sealed class EconomyTransactionService : IEconomyTransactionService
                 @idempotencyKey,
                 @amountDelta,
                 @resultingBalance,
+                @resultingBalanceVersion,
                 @reason,
                 @createdAt,
                 1)
-            RETURNING economy_transaction_id, account_id, currency_code, idempotency_key, amount_delta, resulting_balance, reason, created_at, version;
+            RETURNING economy_transaction_id, account_id, currency_code, idempotency_key, amount_delta, resulting_balance, resulting_balance_version, reason, created_at, version;
             """;
 
         await using var command = new NpgsqlCommand(sql, connection, transaction);
@@ -352,7 +328,8 @@ public sealed class EconomyTransactionService : IEconomyTransactionService
         command.Parameters.AddWithValue("currencyCode", request.CurrencyCode);
         command.Parameters.AddWithValue("idempotencyKey", request.IdempotencyKey);
         command.Parameters.AddWithValue("amountDelta", request.AmountDelta);
-        command.Parameters.AddWithValue("resultingBalance", resultingBalance);
+        command.Parameters.AddWithValue("resultingBalance", updatedBalance.Balance);
+        command.Parameters.AddWithValue("resultingBalanceVersion", updatedBalance.Version);
         command.Parameters.AddWithValue("reason", request.Reason);
         command.Parameters.AddWithValue("createdAt", timestamp);
 
@@ -373,7 +350,7 @@ public sealed class EconomyTransactionService : IEconomyTransactionService
         CancellationToken cancellationToken)
     {
         const string sql = """
-            SELECT economy_transaction_id, account_id, currency_code, idempotency_key, amount_delta, resulting_balance, reason, created_at, version
+            SELECT economy_transaction_id, account_id, currency_code, idempotency_key, amount_delta, resulting_balance, resulting_balance_version, reason, created_at, version
             FROM economy_transactions
             WHERE account_id = @accountId AND idempotency_key = @idempotencyKey
             LIMIT 1;
@@ -401,8 +378,20 @@ public sealed class EconomyTransactionService : IEconomyTransactionService
             reader.GetString(3),
             reader.GetInt64(4),
             reader.GetInt64(5),
-            reader.GetString(6),
-            reader.GetFieldValue<DateTimeOffset>(7),
-            reader.GetInt64(8));
+            reader.GetInt64(6),
+            reader.GetString(7),
+            reader.GetFieldValue<DateTimeOffset>(8),
+            reader.GetInt64(9));
+    }
+
+    private static AccountBalance CreateReplayBalanceSnapshot(EconomyTransaction transaction)
+    {
+        return AccountBalance.Rehydrate(
+            transaction.AccountId,
+            transaction.CurrencyCode,
+            transaction.ResultingBalance,
+            transaction.CreatedAt,
+            transaction.CreatedAt,
+            transaction.ResultingBalanceVersion);
     }
 }

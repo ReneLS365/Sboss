@@ -9,6 +9,7 @@ public sealed class EconomyTransaction
         string idempotencyKey,
         long amountDelta,
         long resultingBalance,
+        long resultingBalanceVersion,
         string reason,
         DateTimeOffset createdAt,
         long version)
@@ -19,6 +20,7 @@ public sealed class EconomyTransaction
         IdempotencyKey = idempotencyKey;
         AmountDelta = amountDelta;
         ResultingBalance = resultingBalance;
+        ResultingBalanceVersion = resultingBalanceVersion;
         Reason = reason;
         CreatedAt = createdAt;
         Version = version;
@@ -30,6 +32,7 @@ public sealed class EconomyTransaction
     public string IdempotencyKey { get; }
     public long AmountDelta { get; }
     public long ResultingBalance { get; }
+    public long ResultingBalanceVersion { get; }
     public string Reason { get; }
     public DateTimeOffset CreatedAt { get; }
     public long Version { get; }
@@ -41,6 +44,7 @@ public sealed class EconomyTransaction
         string idempotencyKey,
         long amountDelta,
         long resultingBalance,
+        long resultingBalanceVersion,
         string reason,
         DateTimeOffset createdAt,
         long version)
@@ -69,6 +73,11 @@ public sealed class EconomyTransaction
             throw new ArgumentOutOfRangeException(nameof(resultingBalance), "Resulting balance cannot be negative.");
         }
 
+        if (resultingBalanceVersion <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(resultingBalanceVersion), "Resulting balance version must be greater than zero.");
+        }
+
         if (version <= 0)
         {
             throw new ArgumentOutOfRangeException(nameof(version), "Version must be greater than zero.");
@@ -81,6 +90,7 @@ public sealed class EconomyTransaction
             normalizedIdempotencyKey,
             amountDelta,
             resultingBalance,
+            resultingBalanceVersion,
             normalizedReason,
             createdAt,
             version);

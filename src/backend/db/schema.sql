@@ -91,11 +91,13 @@ CREATE TABLE IF NOT EXISTS economy_transactions (
   idempotency_key TEXT NOT NULL,
   amount_delta BIGINT NOT NULL,
   resulting_balance BIGINT NOT NULL,
+  resulting_balance_version BIGINT NOT NULL,
   reason TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   version BIGINT NOT NULL DEFAULT 1,
   CONSTRAINT economy_transactions_amount_non_zero CHECK (amount_delta <> 0),
   CONSTRAINT economy_transactions_resulting_balance_non_negative CHECK (resulting_balance >= 0),
+  CONSTRAINT economy_transactions_resulting_balance_version_positive CHECK (resulting_balance_version > 0),
   CONSTRAINT economy_transactions_idempotency_unique UNIQUE (account_id, idempotency_key),
   CONSTRAINT economy_transactions_balance_fk
     FOREIGN KEY (account_id, currency_code)

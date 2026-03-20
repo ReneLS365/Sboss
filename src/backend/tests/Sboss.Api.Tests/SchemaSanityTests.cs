@@ -5,9 +5,10 @@ public sealed class SchemaSanityTests
     private const string ActiveSeasonId = "cccccccc-cccc-cccc-cccc-cccccccccccc";
     private const string KnownLevelSeedId = "dddddddd-dddd-dddd-dddd-dddddddddddd";
     private const string BaselineMigrationFileName = "0001_phase_1b_baseline.sql";
+    private const string EconomyMigrationFileName = "0002_phase_1d_economy_tables.sql";
 
     [Fact]
-    public void BaselineMigrationContainsRequiredTables()
+    public void BaselineMigrationContainsPhase1BTables()
     {
         var migrationPath = ResolveMigrationPath(BaselineMigrationFileName);
         var migration = File.ReadAllText(migrationPath);
@@ -21,8 +22,6 @@ public sealed class SchemaSanityTests
             "level_seeds",
             "seasons",
             "cosmetic_unlocks",
-            "account_balances",
-            "economy_transactions",
             "match_results"
         };
 
@@ -33,14 +32,25 @@ public sealed class SchemaSanityTests
     }
 
     [Fact]
+    public void EconomyMigrationContainsRequiredTables()
+    {
+        var migrationPath = ResolveMigrationPath(EconomyMigrationFileName);
+        var migration = File.ReadAllText(migrationPath);
+
+        Assert.Contains("CREATE TABLE IF NOT EXISTS account_balances", migration, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("CREATE TABLE IF NOT EXISTS economy_transactions", migration, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("resulting_balance_version", migration, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void SchemaSnapshotMatchesBaselineMigration()
     {
         var schema = NormalizeWhitespace(File.ReadAllText(ResolveSchemaPath()));
-        var migration = File.ReadAllText(ResolveMigrationPath(BaselineMigrationFileName));
-
-        var requiredStatements = migration
-            .Split(";", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(statement => NormalizeWhitespace(statement))
+        var requiredStatements = new[] { BaselineMigrationFileName, EconomyMigrationFileName }
+            .Select(ResolveMigrationPath)
+            .SelectMany(path => File.ReadAllText(path)
+                .Split(";", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(statement => NormalizeWhitespace(statement)))
             .Where(statement => statement.StartsWith("CREATE ", StringComparison.OrdinalIgnoreCase))
             .ToArray();
 
@@ -69,7 +79,7 @@ public sealed class SchemaSanityTests
             seed,
             StringComparison.OrdinalIgnoreCase);
         Assert.Contains(
-            NormalizeWhitespace("INSERT INTO economy_transactions (economy_transaction_id, account_id, currency_code, idempotency_key, amount_delta, resulting_balance, reason, created_at, version) VALUES ('98989898-9898-9898-9898-989898989898', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'COIN', 'seed-opening-balance', 100, 100, 'seed_opening_balance', '2026-01-01T00:00:00Z', 1)"),
+            NormalizeWhitespace("INSERT INTO economy_transactions (economy_transaction_id, account_id, currency_code, idempotency_key, amount_delta, resulting_balance, resulting_balance_version, reason, created_at, version) VALUES ('98989898-9898-9898-9898-989898989898', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'COIN', 'seed-opening-balance', 100, 100, 1, 'seed_opening_balance', '2026-01-01T00:00:00Z', 1)"),
             seed,
             StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("NOW()", seed, StringComparison.OrdinalIgnoreCase);

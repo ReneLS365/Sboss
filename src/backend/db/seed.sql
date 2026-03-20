@@ -26,8 +26,8 @@ INSERT INTO account_balances (account_id, currency_code, balance, created_at, up
 VALUES ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'COIN', 100, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 1)
 ON CONFLICT (account_id, currency_code) DO NOTHING;
 
-INSERT INTO economy_transactions (economy_transaction_id, account_id, currency_code, idempotency_key, amount_delta, resulting_balance, reason, created_at, version)
-VALUES ('98989898-9898-9898-9898-989898989898', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'COIN', 'seed-opening-balance', 100, 100, 'seed_opening_balance', '2026-01-01T00:00:00Z', 1)
+INSERT INTO economy_transactions (economy_transaction_id, account_id, currency_code, idempotency_key, amount_delta, resulting_balance, resulting_balance_version, reason, created_at, version)
+VALUES ('98989898-9898-9898-9898-989898989898', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'COIN', 'seed-opening-balance', 100, 100, 1, 'seed_opening_balance', '2026-01-01T00:00:00Z', 1)
 ON CONFLICT (economy_transaction_id) DO NOTHING;
 
 INSERT INTO match_results (match_result_id, account_id, season_id, level_seed_id, score, clear_time_ms, combo_max, penalties, validation_status, created_at, updated_at, version)

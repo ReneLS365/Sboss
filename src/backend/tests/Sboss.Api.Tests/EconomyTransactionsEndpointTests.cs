@@ -79,6 +79,45 @@ public sealed class EconomyTransactionsEndpointTests
     }
 
     [Fact]
+    public async Task LateDuplicateRetry_ReplaysOriginalBalanceSnapshotAfterLaterMutation()
+    {
+        await _database.ResetAsync();
+        using var factory = new TestWebApplicationFactory(_database.ConnectionString);
+        using var client = factory.CreateClient();
+        var originalRequest = new PostEconomyTransactionRequest(AccountId, "COIN", 15, "late-duplicate-001", "contract_reward");
+
+        var firstResponse = await client.PostAsJsonAsync("/api/v1/economy/transactions", originalRequest);
+        var laterResponse = await client.PostAsJsonAsync("/api/v1/economy/transactions",
+            new PostEconomyTransactionRequest(AccountId, "COIN", 20, "late-duplicate-002", "contract_reward"));
+        var replayResponse = await client.PostAsJsonAsync("/api/v1/economy/transactions", originalRequest);
+
+        Assert.Equal(HttpStatusCode.OK, firstResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, laterResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, replayResponse.StatusCode);
+
+        var firstBody = await firstResponse.Content.ReadFromJsonAsync<PostEconomyTransactionResponse>();
+        var laterBody = await laterResponse.Content.ReadFromJsonAsync<PostEconomyTransactionResponse>();
+        var replayBody = await replayResponse.Content.ReadFromJsonAsync<PostEconomyTransactionResponse>();
+
+        Assert.NotNull(firstBody);
+        Assert.NotNull(laterBody);
+        Assert.NotNull(replayBody);
+        Assert.Equal("applied", firstBody!.Outcome);
+        Assert.Equal("applied", laterBody!.Outcome);
+        Assert.Equal("idempotent_replay", replayBody!.Outcome);
+        Assert.Equal(firstBody.EconomyTransactionId, replayBody.EconomyTransactionId);
+        Assert.Equal(firstBody.ResultingBalance, replayBody.ResultingBalance);
+        Assert.Equal(firstBody.BalanceVersion, replayBody.BalanceVersion);
+        Assert.NotEqual(laterBody.ResultingBalance, replayBody.ResultingBalance);
+        Assert.NotEqual(laterBody.BalanceVersion, replayBody.BalanceVersion);
+
+        var state = await ReadEconomyStateAsync(AccountId, "COIN");
+        Assert.Equal(135, state.Balance);
+        Assert.Equal(3, state.LedgerCount);
+        Assert.Equal(135, state.LedgerSum);
+    }
+
+    [Fact]
     public async Task ConcurrentDuplicateAttempts_DoNotDuplicateCurrency()
     {
         await _database.ResetAsync();
