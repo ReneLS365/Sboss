@@ -1,11 +1,13 @@
 using System.Collections.Concurrent;
 using Sboss.Api.Validation;
+using Sboss.Contracts.Economy;
 using Sboss.Contracts.MatchResults;
 using Sboss.Contracts.LevelSeeds;
 using Sboss.Contracts.Seasons;
 using Sboss.Domain.Entities;
 using Sboss.Infrastructure;
 using Sboss.Infrastructure.Repositories;
+using Sboss.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -109,6 +111,41 @@ app.MapPost("/api/v1/match-results", async (
     }
 });
 
+app.MapPost("/api/v1/economy/transactions", async (
+    PostEconomyTransactionRequest request,
+    IEconomyTransactionService service,
+    CancellationToken cancellationToken) =>
+{
+    try
+    {
+        var result = await service.ApplyAsync(
+            new EconomyMutationRequest(
+                request.AccountId,
+                request.CurrencyCode,
+                request.AmountDelta,
+                request.IdempotencyKey,
+                request.Reason),
+            cancellationToken);
+
+        return Results.Ok(MapEconomyTransaction(result));
+    }
+    catch (EconomyTransactionServiceException exception) when (exception.Reason == EconomyTransactionFailureReason.UnknownAccount)
+    {
+        return Results.NotFound(new { error = exception.Message });
+    }
+    catch (EconomyTransactionServiceException exception) when (exception.Reason == EconomyTransactionFailureReason.InsufficientFunds)
+    {
+        return Results.BadRequest(new { error = exception.Message });
+    }
+    catch (EconomyTransactionServiceException exception) when (exception.Reason == EconomyTransactionFailureReason.InvalidRequest)
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["economyTransaction"] = new[] { exception.Message }
+        });
+    }
+});
+
 app.Run();
 
 static CurrentSeasonResponse MapSeason(Season season) =>
@@ -119,5 +156,18 @@ static LevelSeedResponse MapLevelSeed(LevelSeed seed) =>
 
 static PostMatchResultResponse MapMatchResult(MatchResult matchResult) =>
     new(matchResult.MatchResultId, matchResult.ValidationStatus.ToString().ToLowerInvariant(), matchResult.CreatedAt, matchResult.Version);
+
+static PostEconomyTransactionResponse MapEconomyTransaction(EconomyTransactionResult result) =>
+    new(
+        result.Transaction.EconomyTransactionId,
+        result.Transaction.AccountId,
+        result.Transaction.CurrencyCode,
+        result.Transaction.AmountDelta,
+        result.Balance.Balance,
+        result.Transaction.Reason,
+        result.IsIdempotentReplay ? "idempotent_replay" : "applied",
+        result.Transaction.CreatedAt,
+        result.Balance.Version,
+        result.Transaction.Version);
 
 public partial class Program;

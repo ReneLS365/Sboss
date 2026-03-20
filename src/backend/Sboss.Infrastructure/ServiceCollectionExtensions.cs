@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using Sboss.Infrastructure.Repositories;
+using Sboss.Infrastructure.Services;
 
 namespace Sboss.Infrastructure;
 
@@ -20,6 +21,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ISeasonRepository, PostgresSeasonRepository>();
         services.AddScoped<ILevelSeedRepository, PostgresLevelSeedRepository>();
         services.AddScoped<IMatchResultRepository, PostgresMatchResultRepository>();
+        services.AddScoped<IEconomyTransactionService, EconomyTransactionService>();
         return services;
     }
 }

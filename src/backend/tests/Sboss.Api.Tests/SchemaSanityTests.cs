@@ -5,12 +5,13 @@ public sealed class SchemaSanityTests
     private const string ActiveSeasonId = "cccccccc-cccc-cccc-cccc-cccccccccccc";
     private const string KnownLevelSeedId = "dddddddd-dddd-dddd-dddd-dddddddddddd";
     private const string BaselineMigrationFileName = "0001_phase_1b_baseline.sql";
+    private const string EconomyMigrationFileName = "0002_phase_1d_economy_tables.sql";
 
     [Fact]
     public void BaselineMigrationContainsRequiredTables()
     {
         var migrationPath = ResolveMigrationPath(BaselineMigrationFileName);
-        var migration = File.ReadAllText(migrationPath);
+        var migration = File.ReadAllText(migrationPath) + Environment.NewLine + File.ReadAllText(ResolveMigrationPath(EconomyMigrationFileName));
 
         var requiredTables = new[]
         {
@@ -21,6 +22,8 @@ public sealed class SchemaSanityTests
             "level_seeds",
             "seasons",
             "cosmetic_unlocks",
+            "account_balances",
+            "economy_transactions",
             "match_results"
         };
 
@@ -34,7 +37,10 @@ public sealed class SchemaSanityTests
     public void SchemaSnapshotMatchesBaselineMigration()
     {
         var schema = NormalizeWhitespace(File.ReadAllText(ResolveSchemaPath()));
-        var migration = File.ReadAllText(ResolveMigrationPath(BaselineMigrationFileName));
+        var migration = string.Join(
+            Environment.NewLine,
+            File.ReadAllText(ResolveMigrationPath(BaselineMigrationFileName)),
+            File.ReadAllText(ResolveMigrationPath(EconomyMigrationFileName)));
 
         var requiredStatements = migration
             .Split(";", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
@@ -62,6 +68,14 @@ public sealed class SchemaSanityTests
             NormalizeWhitespace("INSERT INTO level_seeds (level_seed_id, seed_value, biome, template, objective, modifiers_json, par_time_ms, gold_time_ms, version, created_at, updated_at) VALUES ('dddddddd-dddd-dddd-dddd-dddddddddddd', 'SBOSS-SEED-001', 'urban', 'template_alpha', 'reach_target', '{\"modifiers\":[\"none\"]}', 120000, 90000, 1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')"),
             seed,
             StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(
+            NormalizeWhitespace("INSERT INTO account_balances (account_id, currency_code, balance, created_at, updated_at, version) VALUES ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'COIN', 100, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 1)"),
+            seed,
+            StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(
+            NormalizeWhitespace("INSERT INTO economy_transactions (economy_transaction_id, account_id, currency_code, idempotency_key, amount_delta, resulting_balance, reason, created_at, version) VALUES ('98989898-9898-9898-9898-989898989898', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'COIN', 'seed-opening-balance', 100, 100, 'seed_opening_balance', '2026-01-01T00:00:00Z', 1)"),
+            seed,
+            StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("NOW()", seed, StringComparison.OrdinalIgnoreCase);
         Assert.Contains(KnownLevelSeedId, seed, StringComparison.OrdinalIgnoreCase);
         Assert.Contains(ActiveSeasonId, seed, StringComparison.OrdinalIgnoreCase);
@@ -74,8 +88,12 @@ public sealed class SchemaSanityTests
         var applySeed = File.ReadAllText(ResolveScriptPath("apply-seed.sh"));
         var validateBootstrap = File.ReadAllText(ResolveScriptPath("validate-bootstrap.sh"));
         var dockerInit = File.ReadAllText(ResolveScriptPath("docker-init.sh"));
+        var baselineMigrationPath = ResolveMigrationPath(BaselineMigrationFileName);
+        var economyMigrationPath = ResolveMigrationPath(EconomyMigrationFileName);
 
         Assert.Contains("schema_migrations", applyMigrations, StringComparison.Ordinal);
+        Assert.True(File.Exists(baselineMigrationPath));
+        Assert.True(File.Exists(economyMigrationPath));
         Assert.Contains("/migrations", applyMigrations, StringComparison.Ordinal);
         Assert.Contains("seed.sql", applySeed, StringComparison.Ordinal);
         Assert.Contains("apply-migrations.sh", validateBootstrap, StringComparison.Ordinal);

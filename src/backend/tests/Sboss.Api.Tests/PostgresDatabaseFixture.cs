@@ -9,66 +9,64 @@ public sealed class PostgresDatabaseFixture : IAsyncLifetime
     public async Task InitializeAsync()
     {
         ConnectionString = ResolveConnectionString();
-        await ResetDatabaseAsync();
+        await ResetAsync();
         Environment.SetEnvironmentVariable("ConnectionStrings__Default", ConnectionString);
     }
 
     public Task DisposeAsync() => Task.CompletedTask;
 
+    public Task ResetAsync()
+    {
+        return ResetDatabaseAsync();
+    }
+
     private async Task ResetDatabaseAsync()
     {
-        var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
-        var databaseName = builder.Database;
-        if (string.IsNullOrWhiteSpace(databaseName))
-        {
-            throw new InvalidOperationException("A database name is required for repository integration tests.");
-        }
+        await using var connection = new NpgsqlConnection(new NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = false }.ConnectionString);
+        await connection.OpenAsync();
 
-        var adminBuilder = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            Database = "postgres",
-            Pooling = false
-        };
-
-        await using (var adminConnection = new NpgsqlConnection(adminBuilder.ConnectionString))
-        {
-            await adminConnection.OpenAsync();
-            await using (var terminateCommand = adminConnection.CreateCommand())
-            {
-                terminateCommand.CommandText = """
-                    SELECT pg_terminate_backend(pid)
-                    FROM pg_stat_activity
-                    WHERE datname = @databaseName
-                      AND pid <> pg_backend_pid();
-                    """;
-                terminateCommand.Parameters.AddWithValue("databaseName", databaseName);
-                await terminateCommand.ExecuteNonQueryAsync();
-            }
-
-            await using (var dropCommand = adminConnection.CreateCommand())
-            {
-                dropCommand.CommandText = $"DROP DATABASE IF EXISTS \"{databaseName}\";";
-                await dropCommand.ExecuteNonQueryAsync();
-            }
-
-            await using var createCommand = adminConnection.CreateCommand();
-            createCommand.CommandText = $"CREATE DATABASE \"{databaseName}\";";
-            await createCommand.ExecuteNonQueryAsync();
-        }
-
-        await using var targetConnection = new NpgsqlConnection(new NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = false }.ConnectionString);
-        await targetConnection.OpenAsync();
-
-        var migrationSql = await File.ReadAllTextAsync(ResolveRepoPath("src/backend/db/migrations/0001_phase_1b_baseline.sql"));
+        var baselineMigrationSql = await File.ReadAllTextAsync(ResolveRepoPath("src/backend/db/migrations/0001_phase_1b_baseline.sql"));
+        var economyMigrationSql = await File.ReadAllTextAsync(ResolveRepoPath("src/backend/db/migrations/0002_phase_1d_economy_tables.sql"));
         var seedSql = await File.ReadAllTextAsync(ResolveRepoPath("src/backend/db/seed.sql"));
 
-        await using (var migrationCommand = targetConnection.CreateCommand())
+        await using (var bootstrapBaselineCommand = connection.CreateCommand())
         {
-            migrationCommand.CommandText = migrationSql;
-            await migrationCommand.ExecuteNonQueryAsync();
+            bootstrapBaselineCommand.CommandText = baselineMigrationSql;
+            await bootstrapBaselineCommand.ExecuteNonQueryAsync();
         }
 
-        await using (var seedCommand = targetConnection.CreateCommand())
+        await using (var bootstrapEconomyCommand = connection.CreateCommand())
+        {
+            bootstrapEconomyCommand.CommandText = economyMigrationSql;
+            await bootstrapEconomyCommand.ExecuteNonQueryAsync();
+        }
+
+        const string truncateSql = """
+            TRUNCATE accounts, player_profiles, inventory_items, cosmetic_unlocks,
+                     seasons, level_seeds, match_results,
+                     account_balances, economy_transactions
+            RESTART IDENTITY CASCADE;
+            """;
+
+        await using (var truncateCommand = connection.CreateCommand())
+        {
+            truncateCommand.CommandText = truncateSql;
+            await truncateCommand.ExecuteNonQueryAsync();
+        }
+
+        await using (var baselineMigrationCommand = connection.CreateCommand())
+        {
+            baselineMigrationCommand.CommandText = baselineMigrationSql;
+            await baselineMigrationCommand.ExecuteNonQueryAsync();
+        }
+
+        await using (var economyMigrationCommand = connection.CreateCommand())
+        {
+            economyMigrationCommand.CommandText = economyMigrationSql;
+            await economyMigrationCommand.ExecuteNonQueryAsync();
+        }
+
+        await using (var seedCommand = connection.CreateCommand())
         {
             seedCommand.CommandText = seedSql;
             await seedCommand.ExecuteNonQueryAsync();
