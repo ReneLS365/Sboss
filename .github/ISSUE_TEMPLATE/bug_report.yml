@@ -1,0 +1,52 @@
+name: Bug report
+description: Report a concrete defect in SBoss
+labels:
+  - bug
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What is broken?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should have happened?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction steps
+      description: Exact steps to reproduce the issue
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Impact and scope
+      description: Which area is affected? API, DB, CI, docs, workflow, etc.
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Logs or evidence
+      description: Paste failing output, screenshots, request IDs, or run links
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Branch, PR, commit SHA, local/CI, OS, and any relevant setup
