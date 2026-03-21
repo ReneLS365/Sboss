@@ -1,0 +1,51 @@
+name: Feature request
+description: Propose a scoped feature or improvement for SBoss
+labels:
+  - enhancement
+body:
+  - type: input
+    id: title
+    attributes:
+      label: Feature title
+      description: Short name for the feature
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What real problem does this feature solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the smallest useful version of the feature
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: In scope and out of scope
+      description: Make the boundaries explicit
+  - type: textarea
+    id: authority
+    attributes:
+      label: Authority and safety considerations
+      description: Note any server-authoritative, idempotency, exploit, or schema concerns
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: List the conditions that make the feature done
+      placeholder: |
+        - ...
+        - ...
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation plan
+      description: Build, tests, manual checks, metrics, or other proof
