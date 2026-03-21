@@ -10,16 +10,16 @@ jobs:
   build-test:
     runs-on: ubuntu-latest
     services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: sboss
-          POSTGRES_PASSWORD: sboss_dev_password
-          POSTGRES_DB: sboss
+  postgres:
+    image: postgres:16
+    env:
+      POSTGRES_USER: sboss
+      POSTGRES_PASSWORD: sboss_dev_password
+      POSTGRES_DB: sboss_tests
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U sboss -d sboss"
+          --health-cmd "pg_isready -U sboss -d sboss_tests"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
