@@ -10,12 +10,12 @@ jobs:
   build-test:
     runs-on: ubuntu-latest
     services:
-  postgres:
-    image: postgres:16
-    env:
-      POSTGRES_USER: sboss
-      POSTGRES_PASSWORD: sboss_dev_password
-      POSTGRES_DB: sboss_tests
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: sboss
+          POSTGRES_PASSWORD: sboss_dev_password
+          POSTGRES_DB: sboss_tests
         ports:
           - 5432:5432
         options: >-
