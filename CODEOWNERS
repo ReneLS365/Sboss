@@ -1,11 +1,13 @@
-# Repository governance owners
-* @stilboss-tech-leads
+# Default owner
+* @ReneLS365
 
 # Governance and control docs
-/docs/MASTER_STATUS.md @stilboss-tech-leads
-/docs/CODEX_WORKFLOW.md @stilboss-tech-leads
-/docs/TASK_TEMPLATE.md @stilboss-tech-leads
-/PLANS.md @stilboss-tech-leads
-/.github/PULL_REQUEST_TEMPLATE.md @stilboss-tech-leads
-/.github/ISSUE_TEMPLATE/01-codex-task.md @stilboss-tech-leads
-/CODEOWNERS @stilboss-tech-leads
+/docs/MASTER_STATUS.md @ReneLS365
+/docs/CODEX_WORKFLOW.md @ReneLS365
+/docs/TASK_TEMPLATE.md @ReneLS365
+/PLANS.md @ReneLS365
+/.github/PULL_REQUEST_TEMPLATE.md @ReneLS365
+/.github/ISSUE_TEMPLATE/01-codex-task.md @ReneLS365
+/.github/ISSUE_TEMPLATE/bug_report.yml @ReneLS365
+/.github/ISSUE_TEMPLATE/feature_request.yml @ReneLS365
+/CODEOWNERS @ReneLS365
