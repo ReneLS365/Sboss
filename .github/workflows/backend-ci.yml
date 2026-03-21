@@ -1,10 +1,10 @@
 name: backend-ci
 
 on:
+  pull_request:
   push:
     branches:
-      - '**'
-  pull_request:
+      - main
 
 jobs:
   build-test:
@@ -15,11 +15,11 @@ jobs:
         env:
           POSTGRES_USER: sboss
           POSTGRES_PASSWORD: sboss_dev_password
-          POSTGRES_DB: sboss
+          POSTGRES_DB: sboss_tests
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U sboss -d sboss"
+          --health-cmd "pg_isready -U sboss -d sboss_tests"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -34,11 +34,11 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Restore
-        run: dotnet restore Sboss.sln
-
       - name: Validate roadmap status
         run: python3 scripts/validate-roadmap-status.py
+
+      - name: Restore
+        run: dotnet restore Sboss.sln
 
       - name: Build
         run: dotnet build Sboss.sln --configuration Release -warnaserror --no-restore
