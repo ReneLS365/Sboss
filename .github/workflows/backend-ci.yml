@@ -1,10 +1,10 @@
 name: backend-ci
 
 on:
+  pull_request:
   push:
     branches:
-      - '**'
-  pull_request:
+      - main
 
 jobs:
   build-test:
@@ -34,11 +34,11 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Restore
-        run: dotnet restore Sboss.sln
-
       - name: Validate roadmap status
         run: python3 scripts/validate-roadmap-status.py
+
+      - name: Restore
+        run: dotnet restore Sboss.sln
 
       - name: Build
         run: dotnet build Sboss.sln --configuration Release -warnaserror --no-restore
