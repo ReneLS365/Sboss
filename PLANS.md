@@ -222,9 +222,9 @@
 - **Task ID:** P1E-CONTRACT-JOB-STATE-MACHINE
 - **Title:** Phase 1E contract job state machine
 - **Phase:** Phase 1 — Authoritative Core Domain
-- **Status:** IN_PROGRESS
+- **Status:** DONE
 - **Branch:** work
-- **PR:** None yet
+- **PR:** #21 (merged)
 - **Scope:**
   - Add the minimum authoritative contract job aggregate and legal state machine for Phase 1E.
   - Add additive PostgreSQL schema/migration support for authoritative contract job state, versioning, and idempotent transition history.
@@ -252,6 +252,53 @@
   - The supported transition entry point is idempotent under retry and concurrency safe under conflicting writers.
   - Automated tests cover valid transitions, invalid transitions, terminal-state rejection, duplicate replay, concurrent conflict handling, and migration ordering/schema expectations.
   - Task scope remains limited to roadmap step 1E and does not expand into payout, inventory, client, company applications, or full contract generation.
+- **Blockers:** None recorded.
+- **Merged completion note:**
+  - Landed the authoritative `ContractJob` aggregate with a legal transition graph owned by the backend.
+  - Added additive migration `0003_phase_1e_contract_jobs.sql`.
+  - Added `contract_jobs` and `contract_job_transitions` to the canonical schema path.
+  - Shipped the transition service and the minimal `POST /api/v1/contract-jobs/{contractJobId}/transitions` endpoint.
+  - Covered replay, invalid transitions, terminal rejection, and conflicting writers with idempotency/concurrency tests.
+- **Last updated:** 2026-03-22
+
+---
+
+## Task Record — P1F-COMPANY-JOB-APPLICATION-SERVICES
+- **Task ID:** P1F-COMPANY-JOB-APPLICATION-SERVICES
+- **Title:** Phase 1F company/job application services
+- **Phase:** Phase 1 — Authoritative Core Domain
+- **Status:** IN_PROGRESS
+- **Branch:** work
+- **PR:** None yet
+- **Scope:**
+  - Add the minimum authoritative company/job application service layer on top of existing Phase 1E contract jobs.
+  - Add authoritative persistence model and mutation rules for job applications.
+  - Add the smallest backend service and HTTP surface needed for submit, withdraw, and accept flows.
+  - Keep acceptance bound to the existing 1E contract job state machine rather than adding a parallel state path.
+  - Add exploit-resistant tests for duplicate submit, replay, concurrent accept, illegal states, and single-winner behavior.
+- **Allowed files:**
+  - `PLANS.md`
+  - `docs/MASTER_STATUS.md`
+  - `src/backend/Sboss.Api/**`
+  - `src/backend/Sboss.Contracts/**`
+  - `src/backend/Sboss.Domain/**`
+  - `src/backend/Sboss.Infrastructure/**`
+  - `src/backend/db/schema.sql`
+  - `src/backend/db/migrations/**`
+  - `src/backend/tests/**`
+- **Non-goals:**
+  - No payout logic.
+  - No inventory binding.
+  - No client/UI work.
+  - No company progression systems.
+  - No auth expansion beyond existing account ownership assumptions.
+  - No full contract generation system.
+- **Acceptance criteria:**
+  - Authoritative persistence exists for company/job applications with backend-owned validation and no client-owned truth.
+  - The backend exposes the minimum submit, withdraw, and accept flows required for the Phase 1F application lifecycle.
+  - Accepting an application integrates with the existing Phase 1E contract job state machine instead of creating a parallel authority path.
+  - Automated tests cover duplicate submit/replay, illegal state transitions, concurrent accept conflicts, and single-winner enforcement.
+  - Task scope remains limited to roadmap step 1F and does not expand into payout, inventory, company progression, client/UI, or future-phase work.
 - **Blockers:** None recorded.
 - **Last updated:** 2026-03-22
 

@@ -11,7 +11,7 @@ public sealed class RoadmapStatusGuardrailTests
         var result = RunValidation(
             ResolveRepoPath("PLANS.md"),
             ResolveRepoPath("docs/MASTER_STATUS.md"),
-            taskId: "P1E-CONTRACT-JOB-STATE-MACHINE");
+            taskId: "P1F-COMPANY-JOB-APPLICATION-SERVICES");
 
         Assert.Equal(0, result.ExitCode);
         Assert.Contains("validation passed", result.Output, StringComparison.OrdinalIgnoreCase);
@@ -24,7 +24,7 @@ public sealed class RoadmapStatusGuardrailTests
         plans = plans.Replace("- **Status:** DONE\n- **Branch:** work\n- **PR:** #11 (merged)", "- **Status:** IN_PROGRESS\n- **Branch:** work\n- **PR:** #11 (merged)", StringComparison.Ordinal);
         plans = plans.Replace("- **Status:** DONE\n- **Branch:** work\n- **PR:** #10 (merged)", "- **Status:** IN_PROGRESS\n- **Branch:** work\n- **PR:** #10 (merged)", StringComparison.Ordinal);
 
-        var result = RunValidation(WriteTempFile(plans), ResolveRepoPath("docs/MASTER_STATUS.md"), taskId: "P1E-CONTRACT-JOB-STATE-MACHINE");
+        var result = RunValidation(WriteTempFile(plans), ResolveRepoPath("docs/MASTER_STATUS.md"), taskId: "P1F-COMPANY-JOB-APPLICATION-SERVICES");
 
         Assert.NotEqual(0, result.ExitCode);
         Assert.Contains("More than one task is marked IN_PROGRESS", result.Output, StringComparison.OrdinalIgnoreCase);
@@ -36,7 +36,7 @@ public sealed class RoadmapStatusGuardrailTests
         var plans = File.ReadAllText(ResolveRepoPath("PLANS.md"));
         plans = plans.Replace("- **PR:** #10 (merged)", "- **PR:** Missing", StringComparison.Ordinal);
 
-        var result = RunValidation(WriteTempFile(plans), ResolveRepoPath("docs/MASTER_STATUS.md"), taskId: "P1E-CONTRACT-JOB-STATE-MACHINE");
+        var result = RunValidation(WriteTempFile(plans), ResolveRepoPath("docs/MASTER_STATUS.md"), taskId: "P1F-COMPANY-JOB-APPLICATION-SERVICES");
 
         Assert.NotEqual(0, result.ExitCode);
         Assert.Contains("without a required PR reference", result.Output, StringComparison.OrdinalIgnoreCase);
@@ -46,9 +46,9 @@ public sealed class RoadmapStatusGuardrailTests
     public void ValidationScript_FailsWhenNextTaskSkipsAhead()
     {
         var masterStatus = File.ReadAllText(ResolveRepoPath("docs/MASTER_STATUS.md"));
-        masterStatus = masterStatus.Replace("- Next task: **1F — Company/job application services**", "- Next task: **1G — First vertical slice HTTP endpoints**", StringComparison.Ordinal);
+        masterStatus = masterStatus.Replace("- Next task: **1G — First vertical slice HTTP endpoints**", "- Next task: **1H — Integration tests for exploit resistance**", StringComparison.Ordinal);
 
-        var result = RunValidation(ResolveRepoPath("PLANS.md"), WriteTempFile(masterStatus), taskId: "P1E-CONTRACT-JOB-STATE-MACHINE");
+        var result = RunValidation(ResolveRepoPath("PLANS.md"), WriteTempFile(masterStatus), taskId: "P1F-COMPANY-JOB-APPLICATION-SERVICES");
 
         Assert.NotEqual(0, result.ExitCode);
         Assert.Contains("Next task skips ahead or reorders the roadmap", result.Output, StringComparison.OrdinalIgnoreCase);
@@ -57,7 +57,7 @@ public sealed class RoadmapStatusGuardrailTests
     [Fact]
     public void ValidationScript_AllowsNextTaskAfterInProgressActiveTask()
     {
-        var result = RunValidation(ResolveRepoPath("PLANS.md"), ResolveRepoPath("docs/MASTER_STATUS.md"), taskId: "P1E-CONTRACT-JOB-STATE-MACHINE");
+        var result = RunValidation(ResolveRepoPath("PLANS.md"), ResolveRepoPath("docs/MASTER_STATUS.md"), taskId: "P1F-COMPANY-JOB-APPLICATION-SERVICES");
 
         Assert.Equal(0, result.ExitCode);
         Assert.Contains("validation passed", result.Output, StringComparison.OrdinalIgnoreCase);

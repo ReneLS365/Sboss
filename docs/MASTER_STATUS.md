@@ -3,8 +3,8 @@
 ## Current Position
 - Current phase: **Phase 1 — Authoritative Core Domain**
 - Completed phase: **Phase 0 — Foundation / Bootstrap**
-- Current task: **1E — Contract job state machine**
-- Next task: **1F — Company/job application services**
+- Current task: **1F — Company/job application services**
+- Next task: **1G — First vertical slice HTTP endpoints**
 
 ---
 
@@ -36,7 +36,7 @@
 - [x] 1B Database schema + migration baseline
 - [x] 1C Core repositories
 - [x] 1D Economy transaction service
-- [ ] 1E Contract job state machine
+- [x] 1E Contract job state machine
 - [ ] 1F Company/job application services
 - [ ] 1G First vertical slice HTTP endpoints
 - [ ] 1H Integration tests for exploit resistance
