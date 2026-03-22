@@ -13,6 +13,7 @@ public sealed class RepositoryIntegrationTests
     private static readonly Guid SeasonId = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc");
     private static readonly Guid LevelSeedId = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
     private static readonly Guid ContractJobId = Guid.Parse("f1e00000-0000-0000-0000-000000000001");
+    private static readonly Guid ContractJobApplicationId = Guid.Parse("f1f00000-0000-0000-0000-000000000001");
     private readonly PostgresDatabaseFixture _database;
 
     public RepositoryIntegrationTests(PostgresDatabaseFixture database)
@@ -117,6 +118,57 @@ public sealed class RepositoryIntegrationTests
         Assert.Equal(AccountId, job.OwningAccountId);
         Assert.Equal(ContractJobState.Accepted, job.CurrentState);
         Assert.Equal(3, job.Version);
+    }
+
+    [Fact]
+    public async Task ContractJobApplicationRepository_CanPersistAndReloadApplicationState()
+    {
+        await _database.ResetAsync();
+        await using var connection = new NpgsqlConnection(_database.ConnectionString);
+        await connection.OpenAsync();
+
+        const string insertJobSql = """
+            INSERT INTO contract_jobs (contract_job_id, owning_account_id, current_state, created_at, updated_at, version)
+            VALUES (@contractJobId, @accountId, 'Open', @createdAt, @updatedAt, 2);
+            """;
+
+        await using (var insertJobCommand = new NpgsqlCommand(insertJobSql, connection))
+        {
+            insertJobCommand.Parameters.AddWithValue("contractJobId", ContractJobId);
+            insertJobCommand.Parameters.AddWithValue("accountId", AccountId);
+            insertJobCommand.Parameters.AddWithValue("createdAt", DateTimeOffset.Parse("2026-03-22T00:00:00Z"));
+            insertJobCommand.Parameters.AddWithValue("updatedAt", DateTimeOffset.Parse("2026-03-22T00:01:00Z"));
+            await insertJobCommand.ExecuteNonQueryAsync();
+        }
+
+        await using var dataSource = NpgsqlDataSourceRegistry.Create(_database.ConnectionString);
+        var repository = new PostgresContractJobApplicationRepository(dataSource);
+        await using var transaction = await connection.BeginTransactionAsync();
+        var application = ContractJobApplication.Rehydrate(
+            ContractJobApplicationId,
+            ContractJobId,
+            AccountId,
+            ContractJobApplicationStatus.Submitted,
+            DateTimeOffset.Parse("2026-03-22T00:02:00Z"),
+            DateTimeOffset.Parse("2026-03-22T00:02:00Z"),
+            1);
+
+        var saved = await repository.CreateSubmittedApplicationAsync(connection, transaction, application, CancellationToken.None);
+        var updated = saved.Withdraw(DateTimeOffset.Parse("2026-03-22T00:03:00Z"));
+        var persisted = await repository.UpdateAsync(connection, transaction, saved, updated, CancellationToken.None);
+        Assert.NotNull(persisted);
+
+        await repository.InsertMutationAsync(connection, transaction, saved.ContractJobApplicationId, saved.ContractJobId, "Withdraw", "repo-withdraw-001", persisted!.Version, persisted.UpdatedAt, CancellationToken.None);
+        await transaction.CommitAsync();
+
+        var reloaded = await repository.GetByIdAsync(saved.ContractJobApplicationId, CancellationToken.None);
+
+        Assert.NotNull(reloaded);
+        Assert.Equal(saved.ContractJobApplicationId, reloaded!.ContractJobApplicationId);
+        Assert.Equal(ContractJobId, reloaded.ContractJobId);
+        Assert.Equal(AccountId, reloaded.ApplicantAccountId);
+        Assert.Equal(ContractJobApplicationStatus.Withdrawn, reloaded.Status);
+        Assert.Equal(2, reloaded.Version);
     }
 
     private static string NormalizeJson(string json)

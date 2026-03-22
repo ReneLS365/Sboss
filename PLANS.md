@@ -268,7 +268,7 @@
 - **Title:** Phase 1F company/job application services
 - **Phase:** Phase 1 — Authoritative Core Domain
 - **Status:** IN_PROGRESS
-- **Branch:** work
+- **Branch:** phase-1f-authoritative-contract-job-application-service
 - **PR:** None yet
 - **Scope:**
   - Add the minimum authoritative company/job application service layer on top of existing Phase 1E contract jobs.
@@ -300,6 +300,10 @@
   - Automated tests cover duplicate submit/replay, illegal state transitions, concurrent accept conflicts, and single-winner enforcement.
   - Task scope remains limited to roadmap step 1F and does not expand into payout, inventory, company progression, client/UI, or future-phase work.
 - **Blockers:** None recorded.
+- **Implementation notes (2026-03-22):**
+  - Persist application state and mutation replay in PostgreSQL with an additive `0004_phase_1f_contract_job_applications.sql` migration.
+  - Reuse the existing Phase 1E contract job state machine so application acceptance performs the same authoritative `Open -> Accepted` transition rules inside one transaction.
+  - Add only the narrow submit/withdraw/accept HTTP surface and exploit-resistant tests required for Phase 1F.
 - **Last updated:** 2026-03-22
 
 ---

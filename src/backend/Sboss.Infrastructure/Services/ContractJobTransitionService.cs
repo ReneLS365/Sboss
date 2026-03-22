@@ -1,7 +1,6 @@
 using System.Data;
 using Npgsql;
 using Sboss.Domain.Entities;
-using Sboss.Infrastructure.Repositories;
 
 namespace Sboss.Infrastructure.Services;
 
@@ -31,7 +30,7 @@ public sealed class ContractJobTransitionService : IContractJobTransitionService
 
         if (existingTransition is not null)
         {
-            var existingJob = await GetContractJobAsync(connection, transaction, normalizedRequest.ContractJobId, false, cancellationToken);
+            var existingJob = await ContractJobStateMutationHelper.GetContractJobAsync(connection, transaction, normalizedRequest.ContractJobId, false, cancellationToken);
             if (existingJob is null)
             {
                 throw new InvalidOperationException("Contract job disappeared during replay lookup.");
@@ -49,7 +48,7 @@ public sealed class ContractJobTransitionService : IContractJobTransitionService
                 true);
         }
 
-        var lockedJob = await GetContractJobAsync(connection, transaction, normalizedRequest.ContractJobId, true, cancellationToken);
+        var lockedJob = await ContractJobStateMutationHelper.GetContractJobAsync(connection, transaction, normalizedRequest.ContractJobId, true, cancellationToken);
         if (lockedJob is null)
         {
             throw new ContractJobTransitionServiceException(ContractJobTransitionFailureReason.NotFound, "Contract job does not exist.");
@@ -78,27 +77,17 @@ public sealed class ContractJobTransitionService : IContractJobTransitionService
                 true);
         }
 
-        ContractJob transitionedJob;
+        ContractJob savedJob;
         try
         {
-            transitionedJob = lockedJob.TransitionTo(normalizedRequest.TargetState, timestamp);
-        }
-        catch (Exception exception) when (exception is InvalidOperationException or ArgumentException)
-        {
-            throw CreateInvalidTransitionException(lockedJob, normalizedRequest.TargetState);
-        }
-
-        var savedJob = await UpdateContractJobAsync(
-            connection,
-            transaction,
-            normalizedRequest.ContractJobId,
-            lockedJob,
-            transitionedJob,
-            cancellationToken);
-
-        try
-        {
-            await InsertTransitionAsync(connection, transaction, lockedJob, savedJob, normalizedRequest.IdempotencyKey, timestamp, cancellationToken);
+            savedJob = await ContractJobStateMutationHelper.ApplyTransitionAsync(
+                connection,
+                transaction,
+                lockedJob,
+                normalizedRequest.TargetState,
+                normalizedRequest.IdempotencyKey,
+                timestamp,
+                cancellationToken);
         }
         catch (PostgresException exception) when (exception.SqlState == UniqueViolationSqlState)
         {
@@ -113,7 +102,7 @@ public sealed class ContractJobTransitionService : IContractJobTransitionService
                 normalizedRequest.IdempotencyKey,
                 cancellationToken);
 
-            var replayJob = await GetContractJobAsync(replayConnection, replayTransaction, normalizedRequest.ContractJobId, false, cancellationToken);
+            var replayJob = await ContractJobStateMutationHelper.GetContractJobAsync(replayConnection, replayTransaction, normalizedRequest.ContractJobId, false, cancellationToken);
             if (replayTransition is null || replayJob is null)
             {
                 throw;
@@ -129,6 +118,11 @@ public sealed class ContractJobTransitionService : IContractJobTransitionService
                     replayTransition.CreatedAt,
                     replayTransition.ResultingVersion),
                 true);
+        }
+        catch (ContractJobTransitionServiceException)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
         }
 
         await transaction.CommitAsync(cancellationToken);
@@ -149,165 +143,13 @@ public sealed class ContractJobTransitionService : IContractJobTransitionService
             throw new ContractJobTransitionServiceException(ContractJobTransitionFailureReason.InvalidRequest, "Target state is invalid.");
         }
 
-        var idempotencyKey = NormalizeTrimmedValue(request.IdempotencyKey, nameof(request.IdempotencyKey), "Idempotency key");
+        var idempotencyKey = ContractJobStateMutationHelper.NormalizeTrimmedValue(
+            request.IdempotencyKey,
+            nameof(request.IdempotencyKey),
+            "Idempotency key",
+            message => new ContractJobTransitionServiceException(ContractJobTransitionFailureReason.InvalidRequest, message));
+
         return request with { IdempotencyKey = idempotencyKey };
-    }
-
-    private static string NormalizeTrimmedValue(string value, string paramName, string label)
-    {
-        ArgumentNullException.ThrowIfNull(value, paramName);
-
-        var normalized = value.Trim();
-        if (string.IsNullOrWhiteSpace(normalized))
-        {
-            throw new ContractJobTransitionServiceException(ContractJobTransitionFailureReason.InvalidRequest, $"{label} is required.");
-        }
-
-        if (normalized.Length > 128)
-        {
-            throw new ContractJobTransitionServiceException(ContractJobTransitionFailureReason.InvalidRequest, $"{label} must be 128 characters or fewer.");
-        }
-
-        return normalized;
-    }
-
-    private static async Task<ContractJob?> GetContractJobAsync(
-        NpgsqlConnection connection,
-        NpgsqlTransaction transaction,
-        Guid contractJobId,
-        bool lockForUpdate,
-        CancellationToken cancellationToken)
-    {
-        var sql = """
-            SELECT contract_job_id, owning_account_id, current_state, created_at, updated_at, version
-            FROM contract_jobs
-            WHERE contract_job_id = @contractJobId
-            """;
-
-        if (lockForUpdate)
-        {
-            sql += Environment.NewLine + "FOR UPDATE";
-        }
-
-        sql += ";";
-
-        await using var command = new NpgsqlCommand(sql, connection, transaction);
-        command.Parameters.AddWithValue("contractJobId", contractJobId);
-
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        if (!await reader.ReadAsync(cancellationToken))
-        {
-            return null;
-        }
-
-        return PostgresContractJobRepository.MapContractJob(reader);
-    }
-
-    private static async Task<ContractJob> UpdateContractJobAsync(
-        NpgsqlConnection connection,
-        NpgsqlTransaction transaction,
-        Guid contractJobId,
-        ContractJob currentJob,
-        ContractJob transitionedJob,
-        CancellationToken cancellationToken)
-    {
-        const string sql = """
-            UPDATE contract_jobs
-            SET current_state = @currentState,
-                updated_at = @updatedAt,
-                version = @newVersion
-            WHERE contract_job_id = @contractJobId
-              AND version = @expectedVersion
-            RETURNING contract_job_id, owning_account_id, current_state, created_at, updated_at, version;
-            """;
-
-        await using var command = new NpgsqlCommand(sql, connection, transaction);
-        command.Parameters.AddWithValue("currentState", transitionedJob.CurrentState.ToString());
-        command.Parameters.AddWithValue("updatedAt", transitionedJob.UpdatedAt);
-        command.Parameters.AddWithValue("newVersion", transitionedJob.Version);
-        command.Parameters.AddWithValue("contractJobId", currentJob.ContractJobId);
-        command.Parameters.AddWithValue("expectedVersion", currentJob.Version);
-
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        if (!await reader.ReadAsync(cancellationToken))
-        {
-            throw await CreateOptimisticConcurrencyExceptionAsync(
-                connection,
-                transaction,
-                contractJobId,
-                transitionedJob.CurrentState,
-                cancellationToken);
-        }
-
-        return PostgresContractJobRepository.MapContractJob(reader);
-    }
-
-    private static async Task<ContractJobTransitionServiceException> CreateOptimisticConcurrencyExceptionAsync(
-        NpgsqlConnection connection,
-        NpgsqlTransaction transaction,
-        Guid contractJobId,
-        ContractJobState requestedTargetState,
-        CancellationToken cancellationToken)
-    {
-        var latestJob = await GetContractJobAsync(connection, transaction, contractJobId, false, cancellationToken);
-        if (latestJob is null)
-        {
-            return new ContractJobTransitionServiceException(
-                ContractJobTransitionFailureReason.NotFound,
-                "Contract job does not exist.");
-        }
-
-        return new ContractJobTransitionServiceException(
-            ContractJobTransitionFailureReason.InvalidTransition,
-            $"Contract job transition from {latestJob.CurrentState} to {requestedTargetState} is not allowed.");
-    }
-
-    private static ContractJobTransitionServiceException CreateInvalidTransitionException(
-        ContractJob job,
-        ContractJobState requestedTargetState)
-    {
-        return new ContractJobTransitionServiceException(
-            ContractJobTransitionFailureReason.InvalidTransition,
-            $"Contract job transition from {job.CurrentState} to {requestedTargetState} is not allowed.");
-    }
-
-    private static async Task InsertTransitionAsync(
-        NpgsqlConnection connection,
-        NpgsqlTransaction transaction,
-        ContractJob currentJob,
-        ContractJob transitionedJob,
-        string idempotencyKey,
-        DateTimeOffset timestamp,
-        CancellationToken cancellationToken)
-    {
-        const string sql = """
-            INSERT INTO contract_job_transitions (
-                contract_job_transition_id,
-                contract_job_id,
-                idempotency_key,
-                from_state,
-                to_state,
-                resulting_version,
-                created_at)
-            VALUES (
-                @transitionId,
-                @contractJobId,
-                @idempotencyKey,
-                @fromState,
-                @toState,
-                @resultingVersion,
-                @createdAt);
-            """;
-
-        await using var command = new NpgsqlCommand(sql, connection, transaction);
-        command.Parameters.AddWithValue("transitionId", Guid.NewGuid());
-        command.Parameters.AddWithValue("contractJobId", currentJob.ContractJobId);
-        command.Parameters.AddWithValue("idempotencyKey", idempotencyKey);
-        command.Parameters.AddWithValue("fromState", currentJob.CurrentState.ToString());
-        command.Parameters.AddWithValue("toState", transitionedJob.CurrentState.ToString());
-        command.Parameters.AddWithValue("resultingVersion", transitionedJob.Version);
-        command.Parameters.AddWithValue("createdAt", timestamp);
-        await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     private static async Task<ContractJobTransitionRecord?> GetTransitionByIdempotencyKeyAsync(
