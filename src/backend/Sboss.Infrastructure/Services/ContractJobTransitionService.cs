@@ -87,7 +87,13 @@ public sealed class ContractJobTransitionService : IContractJobTransitionService
             throw new ContractJobTransitionServiceException(ContractJobTransitionFailureReason.InvalidTransition, exception.Message);
         }
 
-        var savedJob = await UpdateContractJobAsync(connection, transaction, lockedJob, transitionedJob, cancellationToken);
+        var savedJob = await UpdateContractJobAsync(
+            connection,
+            transaction,
+            normalizedRequest.ContractJobId,
+            lockedJob,
+            transitionedJob,
+            cancellationToken);
 
         try
         {
@@ -199,6 +205,7 @@ public sealed class ContractJobTransitionService : IContractJobTransitionService
     private static async Task<ContractJob> UpdateContractJobAsync(
         NpgsqlConnection connection,
         NpgsqlTransaction transaction,
+        Guid contractJobId,
         ContractJob currentJob,
         ContractJob transitionedJob,
         CancellationToken cancellationToken)
@@ -223,10 +230,35 @@ public sealed class ContractJobTransitionService : IContractJobTransitionService
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         if (!await reader.ReadAsync(cancellationToken))
         {
-            throw new InvalidOperationException("Contract job update failed due to an optimistic concurrency conflict.");
+            throw await CreateOptimisticConcurrencyExceptionAsync(
+                connection,
+                transaction,
+                contractJobId,
+                transitionedJob.CurrentState,
+                cancellationToken);
         }
 
         return PostgresContractJobRepository.MapContractJob(reader);
+    }
+
+    private static async Task<ContractJobTransitionServiceException> CreateOptimisticConcurrencyExceptionAsync(
+        NpgsqlConnection connection,
+        NpgsqlTransaction transaction,
+        Guid contractJobId,
+        ContractJobState requestedTargetState,
+        CancellationToken cancellationToken)
+    {
+        var latestJob = await GetContractJobAsync(connection, transaction, contractJobId, false, cancellationToken);
+        if (latestJob is null)
+        {
+            return new ContractJobTransitionServiceException(
+                ContractJobTransitionFailureReason.NotFound,
+                "Contract job does not exist.");
+        }
+
+        return new ContractJobTransitionServiceException(
+            ContractJobTransitionFailureReason.InvalidTransition,
+            $"Contract job transition from {latestJob.CurrentState} to {requestedTargetState} is not allowed.");
     }
 
     private static async Task InsertTransitionAsync(
