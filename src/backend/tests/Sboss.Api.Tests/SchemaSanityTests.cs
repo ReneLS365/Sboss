@@ -6,6 +6,7 @@ public sealed class SchemaSanityTests
     private const string KnownLevelSeedId = "dddddddd-dddd-dddd-dddd-dddddddddddd";
     private const string BaselineMigrationFileName = "0001_phase_1b_baseline.sql";
     private const string EconomyMigrationFileName = "0002_phase_1d_economy_tables.sql";
+    private const string ContractJobsMigrationFileName = "0003_phase_1e_contract_jobs.sql";
 
     [Fact]
     public void BaselineMigrationContainsPhase1BTables()
@@ -43,10 +44,22 @@ public sealed class SchemaSanityTests
     }
 
     [Fact]
+    public void ContractJobsMigrationContainsRequiredTables()
+    {
+        var migrationPath = ResolveMigrationPath(ContractJobsMigrationFileName);
+        var migration = File.ReadAllText(migrationPath);
+
+        Assert.Contains("CREATE TABLE IF NOT EXISTS contract_jobs", migration, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("CREATE TABLE IF NOT EXISTS contract_job_transitions", migration, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("contract_job_transitions_idempotency_unique", migration, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("resulting_version", migration, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void SchemaSnapshotMatchesBaselineMigration()
     {
         var schema = NormalizeWhitespace(File.ReadAllText(ResolveSchemaPath()));
-        var requiredStatements = new[] { BaselineMigrationFileName, EconomyMigrationFileName }
+        var requiredStatements = new[] { BaselineMigrationFileName, EconomyMigrationFileName, ContractJobsMigrationFileName }
             .Select(ResolveMigrationPath)
             .SelectMany(path => File.ReadAllText(path)
                 .Split(";", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
@@ -113,6 +126,7 @@ public sealed class SchemaSanityTests
 
         Assert.Contains("0001_phase_1b_baseline.sql", fixture, StringComparison.Ordinal);
         Assert.Contains("0002_phase_1d_economy_tables.sql", fixture, StringComparison.Ordinal);
+        Assert.Contains("0003_phase_1e_contract_jobs.sql", fixture, StringComparison.Ordinal);
         Assert.Contains("src/backend/db/seed.sql", fixture, StringComparison.Ordinal);
         Assert.Contains("DROP SCHEMA IF EXISTS public CASCADE;", fixture, StringComparison.Ordinal);
         Assert.Contains("CREATE SCHEMA public;", fixture, StringComparison.Ordinal);
@@ -127,6 +141,7 @@ public sealed class SchemaSanityTests
         var resetConnectionIndex = fixture.IndexOf("resetConnection", StringComparison.Ordinal);
         var baselineIndex = fixture.IndexOf("0001_phase_1b_baseline.sql", StringComparison.Ordinal);
         var economyIndex = fixture.IndexOf("0002_phase_1d_economy_tables.sql", StringComparison.Ordinal);
+        var contractJobsIndex = fixture.IndexOf("0003_phase_1e_contract_jobs.sql", StringComparison.Ordinal);
         var targetConnectionIndex = fixture.IndexOf("targetConnection", StringComparison.Ordinal);
         var seedIndex = fixture.IndexOf("src/backend/db/seed.sql", StringComparison.Ordinal);
 
@@ -134,7 +149,8 @@ public sealed class SchemaSanityTests
         Assert.True(resetConnectionIndex > clearAllPoolsIndex, "Fixture must clear all pools before opening the schema-reset connection.");
         Assert.True(targetConnectionIndex > resetConnectionIndex, "Fixture must open a fresh connection after schema reset before running migrations.");
         Assert.True(baselineIndex >= 0 && economyIndex > baselineIndex, "Fixture must apply the 1D economy migration after the Phase 1B baseline.");
-        Assert.True(seedIndex > economyIndex, "Fixture must load seed.sql only after the full migration chain.");
+        Assert.True(contractJobsIndex > economyIndex, "Fixture must apply the 1E contract jobs migration after the 1D economy migration.");
+        Assert.True(seedIndex > contractJobsIndex, "Fixture must load seed.sql only after the full migration chain.");
     }
 
     private static string ResolveSchemaPath()
