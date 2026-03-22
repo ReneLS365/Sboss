@@ -176,11 +176,11 @@
 - **Task ID:** P1D-ECONOMY-TRANSACTION-SERVICE
 - **Title:** Phase 1D economy transaction service
 - **Phase:** Phase 1 — Authoritative Core Domain
-- **Status:** IN_PROGRESS
-- **Branch:** codex-2026-03-20-phase-1d-postgres-reset-fix
-- **PR:** Draft PR — `Fix Phase 1D PostgreSQL test reset pooling`
+- **Status:** DONE
+- **Branch:** work
+- **PR:** #12 (merged), #14 (merged), #19 (merged)
 - **Scope:**
-  - Update roadmap tracking so Phase 1D is the active task after merged Phase 1C repository work.
+  - Update roadmap tracking so Phase 1D is reflected as completed after the merged implementation and stabilization work landed on `main`.
   - Add authoritative account balance state and an append-only economy transaction ledger in PostgreSQL.
   - Implement strict idempotent backend-only economy mutation handling for credits and debits through a single service entry point.
   - Expose one minimal HTTP write endpoint that calls the transaction service and add integration coverage for duplicate/replay/race safety.
@@ -207,25 +207,46 @@
   - Concurrent duplicate attempts do not create ledger dupes or balance inflation.
   - Unknown accounts and insufficient funds are rejected without partial writes.
   - Integration tests prove successful credit/debit, duplicate retry idempotency, concurrent duplicate safety, insufficient funds rejection, unknown account rejection, and ledger/balance consistency.
-  - Build and test validation pass before the task can be promoted beyond `IN_PROGRESS`.
+  - Build and test validation passed before the task was recorded as `DONE` on merged `main`.
 - **Blockers:** None recorded.
-- **Follow-up review actions (2026-03-20):**
-  - Restore `src/backend/db/migrations/0001_phase_1b_baseline.sql` to the original Phase 1B baseline and ship economy tables/constraints via a new forward-only migration so checksum-based upgrades remain valid.
-  - Persist and replay the original authoritative balance snapshot for idempotent economy retries so duplicate responses cannot drift after later balance changes.
-  - Fix `src/backend/tests/Sboss.Api.Tests/PostgresDatabaseFixture.cs` so the shared PostgreSQL test reset applies the full 1D migration chain (`0001`, then `0002`) before `seed.sql`, keeping test bootstrap aligned with CI and preventing missing-relation failures.
-  - Replace database-drop reset logic in `PostgresDatabaseFixture` with in-database schema reset so CI does not kill the Postgres container and surface `57P01` during economy/repository integration tests.
-  - Isolate the destructive `DROP SCHEMA ... CASCADE` reset in its own short-lived connection so migration/seed/test queries never reuse a session that PostgreSQL terminated during schema reset.
-- **Current follow-up fix scope (2026-03-20):**
-  - Repair only the shared PostgreSQL test reset path on current main so backend checks stop failing after the merged Phase 1D migration chain changes.
-  - Keep the change set limited to the fixture and any strictly required regression assertion updates.
-- **Codex review follow-up (2026-03-20):**
-  - Clear tracked `NpgsqlDataSource` pools used by the app-under-test and repository integration tests before the destructive schema reset, because `NpgsqlConnection.ClearAllPools()` does not drain direct `NpgsqlDataSource` pools.
-  - Add/update regression coverage so the fixture guardrails enforce both tracked data-source clearing and the existing migration/seed ordering.
-- **Compile-break follow-up (2026-03-20):**
-  - Remove the unsupported direct `NpgsqlDataSource.Clear()` usage from `NpgsqlDataSourceRegistry`, which fails to compile against the pinned Npgsql `8.0.4` package in this repo.
-  - Replace tracked data-source cleanup with supported tracked data-source disposal before `NpgsqlConnection.ClearAllPools()` so the reset path still tears down direct `NpgsqlDataSource` pools used by tests and the app host.
-  - Keep scope limited to the PostgreSQL test reset follow-up fix plus any strictly required regression assertions.
-- **Last updated:** 2026-03-20
+- **Merged completion/stabilization notes:**
+  - PR #12 delivered the Phase 1D authoritative economy transaction service on `main`.
+  - PR #14 stabilized PostgreSQL test reset pooling so the merged Phase 1D migration chain and integration coverage boot reliably.
+  - PR #19 aligned CI PostgreSQL database configuration with the merged Phase 1D test/bootstrap path.
+  - PR #18 also landed on `main` during this period, but it was a branch-protection documentation clarification and not a Phase 1D implementation dependency.
+- **Last updated:** 2026-03-21
+
+---
+
+## Task Record — P1E-CONTRACT-JOB-STATE-MACHINE
+- **Task ID:** P1E-CONTRACT-JOB-STATE-MACHINE
+- **Title:** Phase 1E contract job state machine
+- **Phase:** Phase 1 — Authoritative Core Domain
+- **Status:** IN_PROGRESS
+- **Branch:** work
+- **PR:** None yet
+- **Scope:**
+  - Add authoritative contract job state model.
+  - Add legal state transition rules.
+  - Add persistence support and tests for state transitions.
+- **Allowed files:**
+  - `PLANS.md`
+  - `docs/MASTER_STATUS.md`
+  - `src/backend/Sboss.Domain/**`
+  - `src/backend/Sboss.Infrastructure/**`
+  - `src/backend/tests/**`
+- **Non-goals:**
+  - No payout logic.
+  - No inventory binding.
+  - No client/UI work.
+  - No full contract generation system.
+- **Acceptance criteria:**
+  - The backend owns the contract job state model and rejects illegal transitions.
+  - Persistence support stores and reloads authoritative job states without client-owned truth.
+  - Automated tests cover valid transitions, invalid transitions, and persistence round-trips for the state machine.
+  - Task scope remains limited to roadmap step 1E and does not expand into payout, inventory, client, or full contract-generation work.
+- **Blockers:** None recorded.
+- **Last updated:** 2026-03-21
 
 ---
 
