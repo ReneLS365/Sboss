@@ -20,7 +20,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ISeasonRepository, PostgresSeasonRepository>();
         services.AddScoped<ILevelSeedRepository, PostgresLevelSeedRepository>();
         services.AddScoped<IMatchResultRepository, PostgresMatchResultRepository>();
+        services.AddScoped<IContractJobRepository, PostgresContractJobRepository>();
         services.AddScoped<IEconomyTransactionService, EconomyTransactionService>();
+        services.AddScoped<IContractJobTransitionService, ContractJobTransitionService>();
         return services;
     }
 }

@@ -226,27 +226,34 @@
 - **Branch:** work
 - **PR:** None yet
 - **Scope:**
-  - Add authoritative contract job state model.
-  - Add legal state transition rules.
-  - Add persistence support and tests for state transitions.
+  - Add the minimum authoritative contract job aggregate and legal state machine for Phase 1E.
+  - Add additive PostgreSQL schema/migration support for authoritative contract job state, versioning, and idempotent transition history.
+  - Add the smallest backend mutation path required to execute validated state transitions with replay and concurrency protection.
+  - Add exploit-resistant domain, repository/service, schema, and API tests for valid transitions, invalid transitions, terminal-state rejection, duplicate replay, and concurrent conflict handling.
 - **Allowed files:**
   - `PLANS.md`
   - `docs/MASTER_STATUS.md`
   - `src/backend/Sboss.Domain/**`
+  - `src/backend/Sboss.Contracts/**`
   - `src/backend/Sboss.Infrastructure/**`
+  - `src/backend/Sboss.Api/**`
+  - `src/backend/db/schema.sql`
+  - `src/backend/db/migrations/**`
   - `src/backend/tests/**`
 - **Non-goals:**
   - No payout logic.
   - No inventory binding.
   - No client/UI work.
   - No full contract generation system.
+  - No company/job application workflow beyond the ownership field needed for authoritative persistence.
 - **Acceptance criteria:**
-  - The backend owns the contract job state model and rejects illegal transitions.
-  - Persistence support stores and reloads authoritative job states without client-owned truth.
-  - Automated tests cover valid transitions, invalid transitions, and persistence round-trips for the state machine.
-  - Task scope remains limited to roadmap step 1E and does not expand into payout, inventory, client, or full contract-generation work.
+  - The backend owns the contract job state model and rejects illegal or skipped transitions.
+  - Persistence support stores authoritative current state, timestamps, and optimistic-concurrency versioning without client-owned truth.
+  - The supported transition entry point is idempotent under retry and concurrency safe under conflicting writers.
+  - Automated tests cover valid transitions, invalid transitions, terminal-state rejection, duplicate replay, concurrent conflict handling, and migration ordering/schema expectations.
+  - Task scope remains limited to roadmap step 1E and does not expand into payout, inventory, client, company applications, or full contract generation.
 - **Blockers:** None recorded.
-- **Last updated:** 2026-03-21
+- **Last updated:** 2026-03-22
 
 ---
 

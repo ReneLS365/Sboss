@@ -153,12 +153,61 @@ public sealed class DomainEntityInvariantTests
     }
 
     [Fact]
+    public void ContractJob_ValidProgression_IncrementsVersionAndState()
+    {
+        var createdAt = DateTimeOffset.UtcNow;
+        var job = ContractJob.Create(Guid.NewGuid(), createdAt);
+
+        var openJob = job.TransitionTo(ContractJobState.Open, createdAt.AddMinutes(1));
+        var acceptedJob = openJob.TransitionTo(ContractJobState.Accepted, createdAt.AddMinutes(2));
+        var inProgressJob = acceptedJob.TransitionTo(ContractJobState.InProgress, createdAt.AddMinutes(3));
+        var completedJob = inProgressJob.TransitionTo(ContractJobState.Completed, createdAt.AddMinutes(4));
+
+        Assert.Equal(ContractJobState.Completed, completedJob.CurrentState);
+        Assert.Equal(5, completedJob.Version);
+        Assert.Equal(createdAt.AddMinutes(4), completedJob.UpdatedAt);
+    }
+
+    [Fact]
+    public void ContractJob_InvalidTransition_DoesNotMutateState()
+    {
+        var createdAt = DateTimeOffset.UtcNow;
+        var job = ContractJob.Create(Guid.NewGuid(), createdAt);
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            job.TransitionTo(ContractJobState.Completed, createdAt.AddMinutes(1)));
+
+        Assert.Equal("Contract job transition from Draft to Completed is not allowed.", exception.Message);
+        Assert.Equal(ContractJobState.Draft, job.CurrentState);
+        Assert.Equal(1, job.Version);
+        Assert.Equal(createdAt, job.UpdatedAt);
+    }
+
+    [Fact]
+    public void ContractJob_TerminalState_RejectsFurtherTransition()
+    {
+        var createdAt = DateTimeOffset.UtcNow;
+        var job = ContractJob.Create(Guid.NewGuid(), createdAt)
+            .TransitionTo(ContractJobState.Open, createdAt.AddMinutes(1))
+            .TransitionTo(ContractJobState.Accepted, createdAt.AddMinutes(2))
+            .TransitionTo(ContractJobState.InProgress, createdAt.AddMinutes(3))
+            .TransitionTo(ContractJobState.Failed, createdAt.AddMinutes(4));
+
+        Assert.Throws<InvalidOperationException>(() =>
+            job.TransitionTo(ContractJobState.Open, createdAt.AddMinutes(5)));
+
+        Assert.Equal(ContractJobState.Failed, job.CurrentState);
+        Assert.Equal(5, job.Version);
+    }
+
+    [Fact]
     public void DomainEntities_DoNotExposePublicSettersOnCriticalState()
     {
         AssertNoPublicSetter<Account>(nameof(Account.AccountId), nameof(Account.ExternalRef), nameof(Account.CreatedAt), nameof(Account.UpdatedAt), nameof(Account.Version));
         AssertNoPublicSetter<Season>(nameof(Season.SeasonId), nameof(Season.Name), nameof(Season.StartsAt), nameof(Season.EndsAt), nameof(Season.IsActive), nameof(Season.CreatedAt), nameof(Season.UpdatedAt), nameof(Season.Version));
         AssertNoPublicSetter<LevelSeed>(nameof(LevelSeed.LevelSeedId), nameof(LevelSeed.SeedValue), nameof(LevelSeed.Biome), nameof(LevelSeed.Template), nameof(LevelSeed.Objective), nameof(LevelSeed.ModifiersJson), nameof(LevelSeed.ParTimeMs), nameof(LevelSeed.GoldTimeMs), nameof(LevelSeed.Version), nameof(LevelSeed.CreatedAt), nameof(LevelSeed.UpdatedAt));
         AssertNoPublicSetter<MatchResult>(nameof(MatchResult.MatchResultId), nameof(MatchResult.AccountId), nameof(MatchResult.SeasonId), nameof(MatchResult.LevelSeedId), nameof(MatchResult.Score), nameof(MatchResult.ClearTimeMs), nameof(MatchResult.ComboMax), nameof(MatchResult.Penalties), nameof(MatchResult.ValidationStatus), nameof(MatchResult.CreatedAt), nameof(MatchResult.UpdatedAt), nameof(MatchResult.Version));
+        AssertNoPublicSetter<ContractJob>(nameof(ContractJob.ContractJobId), nameof(ContractJob.OwningAccountId), nameof(ContractJob.CurrentState), nameof(ContractJob.CreatedAt), nameof(ContractJob.UpdatedAt), nameof(ContractJob.Version));
     }
 
     private static void AssertNoPublicSetter<T>(params string[] propertyNames)

@@ -4,6 +4,7 @@ using Sboss.Contracts.Economy;
 using Sboss.Contracts.MatchResults;
 using Sboss.Contracts.LevelSeeds;
 using Sboss.Contracts.Seasons;
+using Sboss.Contracts.ContractJobs;
 using Sboss.Domain.Entities;
 using Sboss.Infrastructure;
 using Sboss.Infrastructure.Repositories;
@@ -146,6 +147,45 @@ app.MapPost("/api/v1/economy/transactions", async (
     }
 });
 
+app.MapPost("/api/v1/contract-jobs/{contractJobId:guid}/transitions", async (
+    Guid contractJobId,
+    PostContractJobTransitionRequest request,
+    IContractJobTransitionService service,
+    CancellationToken cancellationToken) =>
+{
+    if (!Enum.TryParse<ContractJobState>(request.TargetState, ignoreCase: true, out var targetState))
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["targetState"] = new[] { "Target state is invalid." }
+        });
+    }
+
+    try
+    {
+        var result = await service.TransitionAsync(
+            new ContractJobTransitionRequest(contractJobId, targetState, request.IdempotencyKey),
+            cancellationToken);
+
+        return Results.Ok(MapContractJobTransition(result));
+    }
+    catch (ContractJobTransitionServiceException exception) when (exception.Reason == ContractJobTransitionFailureReason.NotFound)
+    {
+        return Results.NotFound(new { error = exception.Message });
+    }
+    catch (ContractJobTransitionServiceException exception) when (exception.Reason == ContractJobTransitionFailureReason.InvalidRequest)
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["contractJobTransition"] = new[] { exception.Message }
+        });
+    }
+    catch (ContractJobTransitionServiceException exception) when (exception.Reason == ContractJobTransitionFailureReason.InvalidTransition)
+    {
+        return Results.Conflict(new { error = exception.Message });
+    }
+});
+
 app.Run();
 
 static CurrentSeasonResponse MapSeason(Season season) =>
@@ -169,5 +209,15 @@ static PostEconomyTransactionResponse MapEconomyTransaction(EconomyTransactionRe
         result.Transaction.CreatedAt,
         result.Balance.Version,
         result.Transaction.Version);
+
+static PostContractJobTransitionResponse MapContractJobTransition(ContractJobTransitionResult result) =>
+    new(
+        result.Job.ContractJobId,
+        result.Job.OwningAccountId,
+        result.Job.CurrentState.ToString(),
+        result.IsIdempotentReplay ? "idempotent_replay" : "applied",
+        result.Job.CreatedAt,
+        result.Job.UpdatedAt,
+        result.Job.Version);
 
 public partial class Program;
