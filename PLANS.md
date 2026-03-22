@@ -294,11 +294,11 @@
   - No auth expansion beyond existing account ownership assumptions.
   - No full contract generation system.
 - **Acceptance criteria:**
-  - Repo status files reflect actual main-branch state after merged 1E.
-  - P1E is closed as DONE with PR #21 recorded.
-  - P1F is the active in-progress task.
-  - `docs/MASTER_STATUS.md` and `PLANS.md` agree exactly on current task = 1F and next task = 1G.
-  - No files outside the allowed docs are changed.
+  - Authoritative persistence exists for company/job applications with backend-owned validation and no client-owned truth.
+  - The backend exposes the minimum submit, withdraw, and accept flows required for the Phase 1F application lifecycle.
+  - Accepting an application integrates with the existing Phase 1E contract job state machine instead of creating a parallel authority path.
+  - Automated tests cover duplicate submit/replay, illegal state transitions, concurrent accept conflicts, and single-winner enforcement.
+  - Task scope remains limited to roadmap step 1F and does not expand into payout, inventory, company progression, client/UI, or future-phase work.
 - **Blockers:** None recorded.
 - **Last updated:** 2026-03-22
 
