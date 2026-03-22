@@ -128,6 +128,40 @@ public sealed class ContractJobApplicationsEndpointTests
     }
 
     [Fact]
+    public async Task SubmitApplication_ReplayAfterLaterWithdraw_ReturnsOriginalSubmittedSnapshot()
+    {
+        await _database.ResetAsync();
+        await InsertApplicantAccountAsync(ApplicantOneAccountId);
+        var contractJobId = await InsertContractJobAsync(ContractJobState.Open, 2);
+        using var factory = new TestWebApplicationFactory(_database.ConnectionString);
+        using var client = factory.CreateClient();
+        var submitRequest = new PostContractJobApplicationRequest(ApplicantOneAccountId, "submit-later-withdraw-001");
+
+        var firstSubmitResponse = await client.PostAsJsonAsync($"/api/v1/contract-jobs/{contractJobId}/applications", submitRequest);
+        var firstSubmitBody = await firstSubmitResponse.Content.ReadFromJsonAsync<PostContractJobApplicationResponse>();
+        Assert.NotNull(firstSubmitBody);
+
+        var withdrawResponse = await client.PostAsJsonAsync(
+            $"/api/v1/contract-jobs/{contractJobId}/applications/{firstSubmitBody!.ApplicationId}/withdraw",
+            new PostContractJobApplicationMutationRequest("withdraw-after-submit-001"));
+        Assert.Equal(HttpStatusCode.OK, withdrawResponse.StatusCode);
+
+        var replaySubmitResponse = await client.PostAsJsonAsync($"/api/v1/contract-jobs/{contractJobId}/applications", submitRequest);
+        Assert.Equal(HttpStatusCode.OK, replaySubmitResponse.StatusCode);
+        var replaySubmitBody = await replaySubmitResponse.Content.ReadFromJsonAsync<PostContractJobApplicationResponse>();
+
+        Assert.NotNull(replaySubmitBody);
+        Assert.Equal("idempotent_replay", replaySubmitBody!.Outcome);
+        Assert.Equal(firstSubmitBody.ApplicationId, replaySubmitBody.ApplicationId);
+        Assert.Equal("Submitted", replaySubmitBody.ApplicationStatus);
+        Assert.Equal(1, replaySubmitBody.Version);
+
+        var currentState = await ReadApplicationSnapshotAsync(firstSubmitBody.ApplicationId);
+        Assert.Equal("Withdrawn", currentState.Status);
+        Assert.Equal(2, currentState.Version);
+    }
+
+    [Fact]
     public async Task WithdrawApplication_FromNonSubmittedState_IsRejected()
     {
         await _database.ResetAsync();
@@ -246,6 +280,35 @@ public sealed class ContractJobApplicationsEndpointTests
         Assert.Equal(firstBody.ApplicationId, secondBody.ApplicationId);
         Assert.Equal(1, await CountApplicationMutationsForJobAsync(contractJobId));
         Assert.Equal(1, await CountContractJobTransitionsAsync(contractJobId));
+    }
+
+    [Fact]
+    public async Task WithdrawApplication_CanReuseSubmitIdempotencyKeyWithoutBeingTreatedAsSubmitReplay()
+    {
+        await _database.ResetAsync();
+        await InsertApplicantAccountAsync(ApplicantOneAccountId);
+        var contractJobId = await InsertContractJobAsync(ContractJobState.Open, 2);
+        using var factory = new TestWebApplicationFactory(_database.ConnectionString);
+        using var client = factory.CreateClient();
+        const string sharedIdempotencyKey = "shared-mutation-key-001";
+
+        var submitResponse = await client.PostAsJsonAsync(
+            $"/api/v1/contract-jobs/{contractJobId}/applications",
+            new PostContractJobApplicationRequest(ApplicantOneAccountId, sharedIdempotencyKey));
+        var submitBody = await submitResponse.Content.ReadFromJsonAsync<PostContractJobApplicationResponse>();
+        Assert.NotNull(submitBody);
+
+        var withdrawResponse = await client.PostAsJsonAsync(
+            $"/api/v1/contract-jobs/{contractJobId}/applications/{submitBody!.ApplicationId}/withdraw",
+            new PostContractJobApplicationMutationRequest(sharedIdempotencyKey));
+
+        Assert.Equal(HttpStatusCode.OK, withdrawResponse.StatusCode);
+        var withdrawBody = await withdrawResponse.Content.ReadFromJsonAsync<PostContractJobApplicationResponse>();
+        Assert.NotNull(withdrawBody);
+        Assert.Equal("applied", withdrawBody!.Outcome);
+        Assert.Equal("Withdrawn", withdrawBody.ApplicationStatus);
+        Assert.Equal(2, withdrawBody.Version);
+        Assert.Equal(2, await CountApplicationMutationsForJobAsync(contractJobId));
     }
 
     [Fact]

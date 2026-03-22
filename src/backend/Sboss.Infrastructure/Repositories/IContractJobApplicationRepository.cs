@@ -10,7 +10,7 @@ public interface IContractJobApplicationRepository
     Task<IReadOnlyList<ContractJobApplication>> GetSubmittedApplicationsForJobAsync(NpgsqlConnection connection, NpgsqlTransaction transaction, Guid contractJobId, bool lockForUpdate, CancellationToken cancellationToken);
     Task<ContractJobApplication> CreateSubmittedApplicationAsync(NpgsqlConnection connection, NpgsqlTransaction transaction, ContractJobApplication application, CancellationToken cancellationToken);
     Task<ContractJobApplication?> UpdateAsync(NpgsqlConnection connection, NpgsqlTransaction transaction, ContractJobApplication currentApplication, ContractJobApplication updatedApplication, CancellationToken cancellationToken);
-    Task<ContractJobApplicationMutationRecord?> GetMutationByIdempotencyKeyAsync(NpgsqlConnection connection, NpgsqlTransaction transaction, Guid contractJobId, string idempotencyKey, CancellationToken cancellationToken);
+    Task<ContractJobApplicationMutationRecord?> GetMutationByIdempotencyKeyAsync(NpgsqlConnection connection, NpgsqlTransaction transaction, Guid contractJobId, string mutationKind, string idempotencyKey, CancellationToken cancellationToken);
     Task InsertMutationAsync(NpgsqlConnection connection, NpgsqlTransaction transaction, Guid contractJobApplicationId, Guid contractJobId, string mutationKind, string idempotencyKey, long resultingVersion, DateTimeOffset createdAt, CancellationToken cancellationToken);
 }
 

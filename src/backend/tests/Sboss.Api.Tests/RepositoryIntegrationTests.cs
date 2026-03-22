@@ -171,6 +171,57 @@ public sealed class RepositoryIntegrationTests
         Assert.Equal(2, reloaded.Version);
     }
 
+    [Fact]
+    public async Task ContractJobApplicationRepository_GetMutationByIdempotencyKeyAsync_IsScopedByMutationKind()
+    {
+        await _database.ResetAsync();
+        await using var connection = new NpgsqlConnection(_database.ConnectionString);
+        await connection.OpenAsync();
+
+        const string insertJobSql = """
+            INSERT INTO contract_jobs (contract_job_id, owning_account_id, current_state, created_at, updated_at, version)
+            VALUES (@contractJobId, @accountId, 'Open', @createdAt, @updatedAt, 2);
+            """;
+
+        await using (var insertJobCommand = new NpgsqlCommand(insertJobSql, connection))
+        {
+            insertJobCommand.Parameters.AddWithValue("contractJobId", ContractJobId);
+            insertJobCommand.Parameters.AddWithValue("accountId", AccountId);
+            insertJobCommand.Parameters.AddWithValue("createdAt", DateTimeOffset.Parse("2026-03-22T00:00:00Z"));
+            insertJobCommand.Parameters.AddWithValue("updatedAt", DateTimeOffset.Parse("2026-03-22T00:01:00Z"));
+            await insertJobCommand.ExecuteNonQueryAsync();
+        }
+
+        await using var dataSource = NpgsqlDataSourceRegistry.Create(_database.ConnectionString);
+        var repository = new PostgresContractJobApplicationRepository(dataSource);
+        await using var transaction = await connection.BeginTransactionAsync();
+        var application = ContractJobApplication.Rehydrate(
+            ContractJobApplicationId,
+            ContractJobId,
+            AccountId,
+            ContractJobApplicationStatus.Submitted,
+            DateTimeOffset.Parse("2026-03-22T00:02:00Z"),
+            DateTimeOffset.Parse("2026-03-22T00:02:00Z"),
+            1);
+
+        var saved = await repository.CreateSubmittedApplicationAsync(connection, transaction, application, CancellationToken.None);
+        await repository.InsertMutationAsync(connection, transaction, saved.ContractJobApplicationId, saved.ContractJobId, "Submit", "shared-key-001", saved.Version, saved.CreatedAt, CancellationToken.None);
+        await repository.InsertMutationAsync(connection, transaction, saved.ContractJobApplicationId, saved.ContractJobId, "Withdraw", "shared-key-001", saved.Version + 1, saved.CreatedAt.AddMinutes(1), CancellationToken.None);
+        await transaction.CommitAsync();
+
+        await using var readTransaction = await connection.BeginTransactionAsync();
+        var submitMutation = await repository.GetMutationByIdempotencyKeyAsync(connection, readTransaction, ContractJobId, "Submit", "shared-key-001", CancellationToken.None);
+        var withdrawMutation = await repository.GetMutationByIdempotencyKeyAsync(connection, readTransaction, ContractJobId, "Withdraw", "shared-key-001", CancellationToken.None);
+        await readTransaction.CommitAsync();
+
+        Assert.NotNull(submitMutation);
+        Assert.NotNull(withdrawMutation);
+        Assert.Equal("Submit", submitMutation!.MutationKind);
+        Assert.Equal(1, submitMutation.ResultingVersion);
+        Assert.Equal("Withdraw", withdrawMutation!.MutationKind);
+        Assert.Equal(2, withdrawMutation.ResultingVersion);
+    }
+
     private static string NormalizeJson(string json)
     {
         return JsonSerializer.Serialize(JsonSerializer.Deserialize<JsonElement>(json));

@@ -141,17 +141,18 @@ public sealed class PostgresContractJobApplicationRepository : IContractJobAppli
         return MapContractJobApplication(reader);
     }
 
-    public async Task<ContractJobApplicationMutationRecord?> GetMutationByIdempotencyKeyAsync(NpgsqlConnection connection, NpgsqlTransaction transaction, Guid contractJobId, string idempotencyKey, CancellationToken cancellationToken)
+    public async Task<ContractJobApplicationMutationRecord?> GetMutationByIdempotencyKeyAsync(NpgsqlConnection connection, NpgsqlTransaction transaction, Guid contractJobId, string mutationKind, string idempotencyKey, CancellationToken cancellationToken)
     {
         const string sql = """
             SELECT contract_job_application_mutation_id, contract_job_application_id, contract_job_id, mutation_kind, idempotency_key, resulting_version, created_at
             FROM contract_job_application_mutations
-            WHERE contract_job_id = @contractJobId AND idempotency_key = @idempotencyKey
+            WHERE contract_job_id = @contractJobId AND mutation_kind = @mutationKind AND idempotency_key = @idempotencyKey
             LIMIT 1;
             """;
 
         await using var command = new NpgsqlCommand(sql, connection, transaction);
         command.Parameters.AddWithValue("contractJobId", contractJobId);
+        command.Parameters.AddWithValue("mutationKind", mutationKind);
         command.Parameters.AddWithValue("idempotencyKey", idempotencyKey);
 
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);

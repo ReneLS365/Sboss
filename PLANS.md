@@ -304,6 +304,9 @@
   - Persist application state and mutation replay in PostgreSQL with an additive `0004_phase_1f_contract_job_applications.sql` migration.
   - Reuse the existing Phase 1E contract job state machine so application acceptance performs the same authoritative `Open -> Accepted` transition rules inside one transaction.
   - Add only the narrow submit/withdraw/accept HTTP surface and exploit-resistant tests required for Phase 1F.
+- **Follow-up review actions (2026-03-22):**
+  - Scope contract job application idempotency lookups by `mutation_kind` so submit/withdraw/accept retries cannot suppress a different mutation that reused the same key on the same job.
+  - Reconstruct idempotent replay responses from the original recorded mutation/transition result instead of the current live application/job rows so later state changes do not change the replay payload.
 - **Last updated:** 2026-03-22
 
 ---
