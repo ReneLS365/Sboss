@@ -18,7 +18,6 @@ public sealed class ContractJobTransitionService : IContractJobTransitionService
     public async Task<ContractJobTransitionResult> TransitionAsync(ContractJobTransitionRequest request, CancellationToken cancellationToken)
     {
         var normalizedRequest = NormalizeRequest(request);
-        var timestamp = DateTimeOffset.UtcNow;
 
         await using var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
@@ -56,6 +55,8 @@ public sealed class ContractJobTransitionService : IContractJobTransitionService
             throw new ContractJobTransitionServiceException(ContractJobTransitionFailureReason.NotFound, "Contract job does not exist.");
         }
 
+        var timestamp = DateTimeOffset.UtcNow;
+
         existingTransition = await GetTransitionByIdempotencyKeyAsync(
             connection,
             transaction,
@@ -82,9 +83,9 @@ public sealed class ContractJobTransitionService : IContractJobTransitionService
         {
             transitionedJob = lockedJob.TransitionTo(normalizedRequest.TargetState, timestamp);
         }
-        catch (InvalidOperationException exception)
+        catch (Exception exception) when (exception is InvalidOperationException or ArgumentException)
         {
-            throw new ContractJobTransitionServiceException(ContractJobTransitionFailureReason.InvalidTransition, exception.Message);
+            throw CreateInvalidTransitionException(lockedJob, normalizedRequest.TargetState);
         }
 
         var savedJob = await UpdateContractJobAsync(
@@ -259,6 +260,15 @@ public sealed class ContractJobTransitionService : IContractJobTransitionService
         return new ContractJobTransitionServiceException(
             ContractJobTransitionFailureReason.InvalidTransition,
             $"Contract job transition from {latestJob.CurrentState} to {requestedTargetState} is not allowed.");
+    }
+
+    private static ContractJobTransitionServiceException CreateInvalidTransitionException(
+        ContractJob job,
+        ContractJobState requestedTargetState)
+    {
+        return new ContractJobTransitionServiceException(
+            ContractJobTransitionFailureReason.InvalidTransition,
+            $"Contract job transition from {job.CurrentState} to {requestedTargetState} is not allowed.");
     }
 
     private static async Task InsertTransitionAsync(
