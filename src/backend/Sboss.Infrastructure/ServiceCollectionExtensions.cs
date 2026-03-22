@@ -21,8 +21,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ILevelSeedRepository, PostgresLevelSeedRepository>();
         services.AddScoped<IMatchResultRepository, PostgresMatchResultRepository>();
         services.AddScoped<IContractJobRepository, PostgresContractJobRepository>();
+        services.AddScoped<IContractJobApplicationRepository, PostgresContractJobApplicationRepository>();
         services.AddScoped<IEconomyTransactionService, EconomyTransactionService>();
         services.AddScoped<IContractJobTransitionService, ContractJobTransitionService>();
+        services.AddScoped<IContractJobApplicationService, ContractJobApplicationService>();
         return services;
     }
 }

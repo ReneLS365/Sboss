@@ -5,6 +5,7 @@ using Sboss.Contracts.MatchResults;
 using Sboss.Contracts.LevelSeeds;
 using Sboss.Contracts.Seasons;
 using Sboss.Contracts.ContractJobs;
+using Sboss.Contracts.ContractJobApplications;
 using Sboss.Domain.Entities;
 using Sboss.Infrastructure;
 using Sboss.Infrastructure.Repositories;
@@ -186,6 +187,101 @@ app.MapPost("/api/v1/contract-jobs/{contractJobId:guid}/transitions", async (
     }
 });
 
+app.MapPost("/api/v1/contract-jobs/{contractJobId:guid}/applications", async (
+    Guid contractJobId,
+    PostContractJobApplicationRequest request,
+    IContractJobApplicationService service,
+    CancellationToken cancellationToken) =>
+{
+    try
+    {
+        var result = await service.SubmitApplicationAsync(
+            new SubmitContractJobApplicationRequest(contractJobId, request.ApplicantAccountId, request.IdempotencyKey),
+            cancellationToken);
+
+        return Results.Ok(MapContractJobApplication(result));
+    }
+    catch (ContractJobApplicationServiceException exception) when (exception.Reason == ContractJobApplicationFailureReason.NotFound)
+    {
+        return Results.NotFound(new { error = exception.Message });
+    }
+    catch (ContractJobApplicationServiceException exception) when (exception.Reason == ContractJobApplicationFailureReason.InvalidRequest)
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["contractJobApplication"] = new[] { exception.Message }
+        });
+    }
+    catch (ContractJobApplicationServiceException exception) when (exception.Reason == ContractJobApplicationFailureReason.Conflict)
+    {
+        return Results.Conflict(new { error = exception.Message });
+    }
+});
+
+app.MapPost("/api/v1/contract-jobs/{contractJobId:guid}/applications/{applicationId:guid}/withdraw", async (
+    Guid contractJobId,
+    Guid applicationId,
+    PostContractJobApplicationMutationRequest request,
+    IContractJobApplicationService service,
+    CancellationToken cancellationToken) =>
+{
+    try
+    {
+        var result = await service.WithdrawApplicationAsync(
+            new WithdrawContractJobApplicationRequest(contractJobId, applicationId, request.IdempotencyKey),
+            cancellationToken);
+
+        return Results.Ok(MapContractJobApplication(result));
+    }
+    catch (ContractJobApplicationServiceException exception) when (exception.Reason == ContractJobApplicationFailureReason.NotFound)
+    {
+        return Results.NotFound(new { error = exception.Message });
+    }
+    catch (ContractJobApplicationServiceException exception) when (exception.Reason == ContractJobApplicationFailureReason.InvalidRequest)
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["contractJobApplication"] = new[] { exception.Message }
+        });
+    }
+    catch (ContractJobApplicationServiceException exception) when (exception.Reason == ContractJobApplicationFailureReason.Conflict)
+    {
+        return Results.Conflict(new { error = exception.Message });
+    }
+});
+
+app.MapPost("/api/v1/contract-jobs/{contractJobId:guid}/applications/{applicationId:guid}/accept", async (
+    Guid contractJobId,
+    Guid applicationId,
+    PostContractJobApplicationMutationRequest request,
+    IContractJobApplicationService service,
+    CancellationToken cancellationToken) =>
+{
+    try
+    {
+        var result = await service.AcceptApplicationAsync(
+            new AcceptContractJobApplicationRequest(contractJobId, applicationId, request.IdempotencyKey),
+            cancellationToken);
+
+        return Results.Ok(MapContractJobApplication(result));
+    }
+    catch (ContractJobApplicationServiceException exception) when (exception.Reason == ContractJobApplicationFailureReason.NotFound)
+    {
+        return Results.NotFound(new { error = exception.Message });
+    }
+    catch (ContractJobApplicationServiceException exception) when (exception.Reason == ContractJobApplicationFailureReason.InvalidRequest)
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["contractJobApplication"] = new[] { exception.Message }
+        });
+    }
+    catch (ContractJobApplicationServiceException exception) when (exception.Reason == ContractJobApplicationFailureReason.Conflict)
+    {
+        return Results.Conflict(new { error = exception.Message });
+    }
+});
+
 app.Run();
 
 static CurrentSeasonResponse MapSeason(Season season) =>
@@ -219,5 +315,18 @@ static PostContractJobTransitionResponse MapContractJobTransition(ContractJobTra
         result.Job.CreatedAt,
         result.Job.UpdatedAt,
         result.Job.Version);
+
+static PostContractJobApplicationResponse MapContractJobApplication(ContractJobApplicationMutationResult result) =>
+    new(
+        result.Application.ContractJobApplicationId,
+        result.Application.ContractJobId,
+        result.Application.ApplicantAccountId,
+        result.Application.Status.ToString(),
+        result.IsIdempotentReplay ? "idempotent_replay" : "applied",
+        result.Application.CreatedAt,
+        result.Application.UpdatedAt,
+        result.Application.Version,
+        result.ResultingJobState?.ToString(),
+        result.AcceptedApplicationId);
 
 public partial class Program;
