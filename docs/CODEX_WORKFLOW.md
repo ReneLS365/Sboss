@@ -4,7 +4,7 @@
 This document locks the repository execution model before Phase 1A begins.
 
 ## Control Rules
-- `docs/MASTER_STATUS.md` is the only roadmap and progress source.
+- `docs/MASTER_STATUS.md` is the only roadmap and in-repo progress source.
 - Every non-trivial task must be added to `PLANS.md` before implementation.
 - Work must remain inside the active phase and task scope.
 - Draft pull requests only until human review approves the change set.
@@ -33,5 +33,5 @@ This document locks the repository execution model before Phase 1A begins.
 
 ## Forbidden Drift
 - Do not treat pull requests, issues, or task documents as roadmap replacements.
-- Do not create hidden sources of status outside `docs/MASTER_STATUS.md`.
+- Do not create hidden sources of roadmap/progress status outside `docs/MASTER_STATUS.md`; `PLANS.md` may track scoped task execution records but must not contradict roadmap state.
 - Do not implement future-phase runtime logic under the cover of documentation or scaffolding work.

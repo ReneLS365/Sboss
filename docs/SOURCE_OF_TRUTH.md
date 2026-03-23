@@ -24,6 +24,13 @@ Source of truth for:
 - branch and PR workflow
 - status files tracked in git
 
+### `docs/MASTER_STATUS.md`
+Source of truth for:
+- current roadmap phase
+- current roadmap task
+- next roadmap task
+- canonical in-repo phase/progress status
+
 ### Google Docs / Drive
 Source of truth for:
 - large working notes
@@ -34,10 +41,10 @@ Source of truth for:
 
 ### ClickUp or equivalent task board
 Source of truth for:
-- task status
 - backlog order
 - owner assignment
 - deadlines
+- planning triage that does not override repo roadmap state
 
 ## Non-negotiable rule
 The same operational truth must not live in two active places at once.
@@ -46,6 +53,7 @@ The same operational truth must not live in two active places at once.
 - PR state belongs in GitHub, not in a Google Doc.
 - Required checks belong in GitHub settings and workflow YAML, not in ClickUp.
 - Active architecture decisions belong in the repo, not in a stale PDF.
+- Current roadmap phase/task status belongs in `docs/MASTER_STATUS.md`, not in ClickUp.
 - Legacy brainstorm material can stay in Drive, but it does not override repo state.
 
 ## Naming rule
