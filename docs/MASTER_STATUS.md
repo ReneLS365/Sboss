@@ -38,9 +38,12 @@
 - [x] 1D Economy transaction service
 - [x] 1E Contract job state machine
 - [x] 1F Company/job application services
-- [ ] 1G First vertical slice HTTP endpoints
+- [x] 1G First vertical slice HTTP endpoints
 - [ ] 1H Integration tests for exploit resistance
 - [ ] 1I Hardening + invariants
+
+Audit note:
+- The current repo already contains the scoped 1G HTTP slice for economy transactions, contract job transitions, and contract job applications. This branch closes the documentation drift around that fact; 1H becomes the active task when this status-alignment branch merges.
 
 ## Phase 2 — Deterministic Tick Engine
 - [ ] 2A Tick model + schema

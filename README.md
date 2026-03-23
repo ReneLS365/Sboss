@@ -17,14 +17,15 @@ Sboss is bootstrapped as a server-authoritative online game foundation where .NE
 ## Project Status
 Project status, explicit current phase, and next task are tracked in [docs/MASTER_STATUS.md](docs/MASTER_STATUS.md).
 
-Current next task:
-- **1B — Database schema + migration baseline**
+Current roadmap position:
+- **Current task: 1G — First vertical slice HTTP endpoints**
+- **Next task: 1H — Integration tests for exploit resistance**
 
 ## Execution Model
 - Roadmap and progress source of truth: [docs/MASTER_STATUS.md](docs/MASTER_STATUS.md)
 - Repository execution and governance workflow: [docs/CODEX_WORKFLOW.md](docs/CODEX_WORKFLOW.md)
 - Task definition format for scoped work: [docs/TASK_TEMPLATE.md](docs/TASK_TEMPLATE.md)
-- Execution follows the roadmap phase declared in `docs/MASTER_STATUS.md`; `PLANS.md` is used only to scope the current task inside that active phase.
+- Execution follows the roadmap phase declared in `docs/MASTER_STATUS.md`; `PLANS.md` is the execution ledger for scoped task records inside that active phase.
 
 ## Local Setup
 1. Copy env file:

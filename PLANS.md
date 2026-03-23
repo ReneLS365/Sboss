@@ -8,6 +8,45 @@
 
 ---
 
+## Task Record — P1G-SCOPE-LOCK-AND-STATUS-ALIGNMENT
+- **Task ID:** P1G-SCOPE-LOCK-AND-STATUS-ALIGNMENT
+- **Title:** Phase 1G scope lock and status alignment
+- **Phase:** Phase 1 — Authoritative Core Domain
+- **Status:** IN_PROGRESS
+- **Branch:** work
+- **PR:** Draft PR pending
+- **Scope:**
+  - Audit the current Phase 1 HTTP slice already present in the repo for economy transactions, contract job transitions, and contract job applications.
+  - Lock the exact closure criteria for 1G in repo docs so Phase 1 can finish in roadmap order without scope drift.
+  - Align README and workflow/source-of-truth docs so roadmap/progress ownership is declared once and consistently.
+- **Allowed files:**
+  - `PLANS.md`
+  - `README.md`
+  - `docs/MASTER_STATUS.md`
+  - `docs/CODEX_WORKFLOW.md`
+  - `docs/SOURCE_OF_TRUTH.md`
+- **Non-goals:**
+  - No new endpoints or runtime behavior.
+  - No service, repository, domain, database, CI, or client changes.
+  - No Phase 2 tick work, auth work, company progression, inventory, or economy hardening.
+  - No ClickUp assumptions beyond what can be anchored to repo governance docs.
+- **Acceptance criteria:**
+  - `PLANS.md` explicitly records whether 1G is already functionally covered by the existing endpoint slice or names a narrow remaining gap.
+  - `README.md` no longer points to 1B as the current next task and instead reflects the current Phase 1 position.
+  - `docs/CODEX_WORKFLOW.md` and `docs/SOURCE_OF_TRUTH.md` no longer conflict about who owns roadmap/progress status.
+  - `docs/MASTER_STATUS.md` advances from 1G to 1H only if the audit confirms the existing Phase 1 HTTP slice already covers the 1G closure scope.
+- **Blockers:** None recorded.
+- **Audit conclusion:**
+  - The current repo already contains the Phase 1G HTTP write slice for the scoped Phase 1 services:
+    - economy transactions via `POST /api/v1/economy/transactions`
+    - contract job transitions via `POST /api/v1/contract-jobs/{contractJobId}/transitions`
+    - contract job applications via submit, withdraw, and accept mutation endpoints under `/api/v1/contract-jobs/{contractJobId}/applications`
+  - Endpoint-focused integration coverage for those paths already exists under `src/backend/tests/Sboss.Api.Tests/`.
+  - No remaining 1G runtime gap was identified by this audit; the required action is to close status drift and advance to 1H.
+- **Last updated:** 2026-03-23
+
+---
+
 ## Task Record — P1A-PREFLIGHT-BASELINE-REPAIR
 - **Task ID:** P1A-PREFLIGHT-BASELINE-REPAIR
 - **Title:** Phase 1A preflight baseline repair and Phase 1 doc alignment
@@ -322,9 +361,9 @@
 - **Task ID:** P1G-FIRST-VERTICAL-SLICE-HTTP-ENDPOINTS
 - **Title:** Phase 1G first vertical slice HTTP endpoints
 - **Phase:** Phase 1 — Authoritative Core Domain
-- **Status:** IN_PROGRESS
+- **Status:** DONE
 - **Branch:** work
-- **PR:** None yet
+- **PR:** #12 (merged), #21 (merged), #23 (merged)
 - **Scope:**
   - Expose the first coherent authoritative HTTP vertical slice over the merged Phase 1 backend foundations.
   - Keep the slice minimal and server-authoritative.
@@ -352,10 +391,16 @@
 - **Acceptance criteria:**
   - Repo status files reflect actual main-branch state after merged 1F
   - P1F is closed as DONE with PR #23 recorded
-  - P1G is the active IN_PROGRESS task
-  - `docs/MASTER_STATUS.md` and `PLANS.md` agree exactly on current task = 1G and next task = 1H
+  - P1G closure is explicitly limited to the already-landed Phase 1 HTTP slice for economy transactions, contract job transitions, and contract job applications
+  - `docs/MASTER_STATUS.md` and `PLANS.md` agree exactly on the current 1G/next 1H sequencing until the follow-up branch merges
   - No files outside the allowed docs are changed in this PR
 - **Blockers:** None recorded.
+- **Merged completion note:**
+  - The first authoritative HTTP vertical slice was delivered incrementally by merged Phase 1D, 1E, and 1F work.
+  - Landed `POST /api/v1/economy/transactions` in PR #12.
+  - Landed `POST /api/v1/contract-jobs/{contractJobId}/transitions` in PR #21.
+  - Landed contract job application submit/withdraw/accept endpoints in PR #23.
+  - Endpoint-level integration coverage for those routes now exists in `src/backend/tests/Sboss.Api.Tests/`.
 - **Follow-up review actions (2026-03-23):**
   - Keep `src/backend/tests/Sboss.Api.Tests/RoadmapStatusGuardrailTests.cs` aligned with the active `docs/MASTER_STATUS.md` / `PLANS.md` task pair so the roadmap validation fixture continues to represent the checked-in repo state after 1G/1H transitions.
 - **Last updated:** 2026-03-23
