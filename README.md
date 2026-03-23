@@ -18,8 +18,8 @@ Sboss is bootstrapped as a server-authoritative online game foundation where .NE
 Project status, explicit current phase, and next task are tracked in [docs/MASTER_STATUS.md](docs/MASTER_STATUS.md).
 
 Current roadmap position:
-- **Current task: 1H — Integration tests for exploit resistance**
-- **Next task: 1I — Hardening + invariants**
+- **Current task: 1I — Hardening + invariants**
+- **Next task: 2A — Tick model + schema**
 
 ## Execution Model
 - Roadmap and progress source of truth: [docs/MASTER_STATUS.md](docs/MASTER_STATUS.md)

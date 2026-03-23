@@ -5,7 +5,7 @@ namespace Sboss.Api.Tests;
 
 public sealed class RoadmapStatusGuardrailTests
 {
-    private const string ActiveTaskId = "P1G-FIRST-VERTICAL-SLICE-HTTP-ENDPOINTS";
+    private const string ActiveTaskId = "P1I-HARDENING-AND-INVARIANTS";
 
     [Fact]
     public void ValidationScript_PassesForCurrentRepoState()
@@ -48,7 +48,7 @@ public sealed class RoadmapStatusGuardrailTests
     public void ValidationScript_FailsWhenNextTaskSkipsAhead()
     {
         var masterStatus = File.ReadAllText(ResolveRepoPath("docs/MASTER_STATUS.md"));
-        masterStatus = masterStatus.Replace("- Next task: **1H — Integration tests for exploit resistance**", "- Next task: **1I — Hardening + invariants**", StringComparison.Ordinal);
+        masterStatus = masterStatus.Replace("- Next task: **2A — Tick model + schema**", "- Next task: **2B — Tick processor skeleton**", StringComparison.Ordinal);
 
         var result = RunValidation(ResolveRepoPath("PLANS.md"), WriteTempFile(masterStatus), taskId: ActiveTaskId);
 
@@ -60,6 +60,52 @@ public sealed class RoadmapStatusGuardrailTests
     public void ValidationScript_AllowsNextTaskAfterInProgressActiveTask()
     {
         var result = RunValidation(ResolveRepoPath("PLANS.md"), ResolveRepoPath("docs/MASTER_STATUS.md"), taskId: ActiveTaskId);
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("validation passed", result.Output, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void ValidationScript_AllowsCrossPhaseNextTaskForFinalTaskInPhase()
+    {
+        const string masterStatus = """
+# Sboss — Master Status
+
+## Current Position
+- Current phase: **Phase 1 — Authoritative Core Domain**
+- Completed phase: **Phase 0 — Foundation / Bootstrap**
+- Current task: **1I — Hardening + invariants**
+- Next task: **2A — Tick model + schema**
+
+---
+
+## Status overview
+- [x] Phase 0 — Foundation / Bootstrap
+- [ ] Phase 1 — Authoritative Core Domain
+- [ ] Phase 2 — Deterministic Tick Engine
+
+---
+
+## Phase 1 — Authoritative Core Domain
+- [x] 1H Integration tests for exploit resistance
+- [ ] 1I Hardening + invariants
+
+## Phase 2 — Deterministic Tick Engine
+- [ ] 2A Tick model + schema
+- [ ] 2B Tick processor skeleton
+""";
+
+        const string plans = """
+# Sboss Phase Plan
+
+## Task Record — P1I-HARDENING-AND-INVARIANTS
+- **Task ID:** P1I-HARDENING-AND-INVARIANTS
+- **Title:** Phase 1I hardening and invariants
+- **Status:** IN_PROGRESS
+- **PR:** Draft PR prepared via make_pr
+""";
+
+        var result = RunValidation(WriteTempFile(plans), WriteTempFile(masterStatus), taskId: "P1I-HARDENING-AND-INVARIANTS");
 
         Assert.Equal(0, result.ExitCode);
         Assert.Contains("validation passed", result.Output, StringComparison.OrdinalIgnoreCase);

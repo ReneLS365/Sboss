@@ -3,8 +3,8 @@
 ## Current Position
 - Current phase: **Phase 1 — Authoritative Core Domain**
 - Completed phase: **Phase 0 — Foundation / Bootstrap**
-- Current task: **1H — Integration tests for exploit resistance**
-- Next task: **1I — Hardening + invariants**
+- Current task: **1I — Hardening + invariants**
+- Next task: **2A — Tick model + schema**
 
 ---
 
@@ -39,11 +39,11 @@
 - [x] 1E Contract job state machine
 - [x] 1F Company/job application services
 - [x] 1G First vertical slice HTTP endpoints
-- [ ] 1H Integration tests for exploit resistance
+- [x] 1H Integration tests for exploit resistance
 - [ ] 1I Hardening + invariants
 
 Audit note:
-- The current repo already contains the scoped 1G HTTP slice for economy transactions, contract job transitions, and contract job applications. This branch closes the documentation drift around that fact; 1H becomes the active task when this status-alignment branch merges.
+- The current repo already contains exploit-resistance integration coverage for the scoped Phase 1 HTTP mutation slice, including economy transaction replay handling, contract job transition conflict coverage, and contract job application duplicate/concurrency coverage. Phase 1H is complete, and Phase 1I is now the active task before Phase 2 begins.
 
 ## Phase 2 — Deterministic Tick Engine
 - [ ] 2A Tick model + schema
