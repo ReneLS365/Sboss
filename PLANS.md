@@ -267,9 +267,9 @@
 - **Task ID:** P1F-COMPANY-JOB-APPLICATION-SERVICES
 - **Title:** Phase 1F company/job application services
 - **Phase:** Phase 1 — Authoritative Core Domain
-- **Status:** IN_PROGRESS
+- **Status:** DONE
 - **Branch:** phase-1f-authoritative-contract-job-application-service
-- **PR:** None yet
+- **PR:** #23 (merged)
 - **Scope:**
   - Add the minimum authoritative company/job application service layer on top of existing Phase 1E contract jobs.
   - Add authoritative persistence model and mutation rules for job applications.
@@ -300,16 +300,65 @@
   - Automated tests cover duplicate submit/replay, illegal state transitions, concurrent accept conflicts, and single-winner enforcement.
   - Task scope remains limited to roadmap step 1F and does not expand into payout, inventory, company progression, client/UI, or future-phase work.
 - **Blockers:** None recorded.
-- **Implementation notes (2026-03-22):**
-  - Persist application state and mutation replay in PostgreSQL with an additive `0004_phase_1f_contract_job_applications.sql` migration.
-  - Reuse the existing Phase 1E contract job state machine so application acceptance performs the same authoritative `Open -> Accepted` transition rules inside one transaction.
-  - Add only the narrow submit/withdraw/accept HTTP surface and exploit-resistant tests required for Phase 1F.
+- **Merged completion note:**
+  - Added additive migration `0004_phase_1f_contract_job_applications.sql`.
+  - Added `contract_job_applications` and `contract_job_application_mutations` to the canonical schema path.
+  - Landed the authoritative `ContractJobApplication` aggregate and status enum.
+  - Added `PostgresContractJobApplicationRepository`.
+  - Shipped `ContractJobApplicationService` submit/withdraw/accept flows.
+  - Kept the accept path atomic and tied to the existing Phase 1E `Open -> Accepted` contract job transition.
+  - Landed the minimal endpoints `POST /api/v1/contract-jobs/{contractJobId}/applications`, `POST /api/v1/contract-jobs/{contractJobId}/applications/{applicationId}/withdraw`, and `POST /api/v1/contract-jobs/{contractJobId}/applications/{applicationId}/accept`.
+  - Added idempotency and concurrency coverage for replay handling and single-winner behavior.
 - **Follow-up review actions (2026-03-22):**
   - Scope contract job application idempotency lookups by `mutation_kind` so submit/withdraw/accept retries cannot suppress a different mutation that reused the same key on the same job.
   - Reconstruct idempotent replay responses from the original recorded mutation/transition result instead of the current live application/job rows so later state changes do not change the replay payload.
 - **Review fix notes (2026-03-22):**
   - Keep the existing replay lookup semantics, but narrow the authoritative database uniqueness for `contract_job_application_mutations` to `(contract_job_id, mutation_kind, idempotency_key)` so different mutation kinds can legally reuse the same idempotency key on the same job.
-- **Last updated:** 2026-03-22
+- **Last updated:** 2026-03-23
+
+---
+
+## Task Record — P1G-FIRST-VERTICAL-SLICE-HTTP-ENDPOINTS
+- **Task ID:** P1G-FIRST-VERTICAL-SLICE-HTTP-ENDPOINTS
+- **Title:** Phase 1G first vertical slice HTTP endpoints
+- **Phase:** Phase 1 — Authoritative Core Domain
+- **Status:** IN_PROGRESS
+- **Branch:** work
+- **PR:** None yet
+- **Scope:**
+  - Expose the first coherent authoritative HTTP vertical slice over the merged Phase 1 backend foundations.
+  - Keep the slice minimal and server-authoritative.
+  - Build on the already-landed domain/services for economy transactions, contract job transitions, and contract job applications.
+  - Add endpoint-level contract coverage and integration tests for the minimal usable backend slice.
+  - Do not introduce auth, client/UI, tick engine, inventory, payouts, or future-phase systems.
+- **Allowed files:**
+  - `PLANS.md`
+  - `docs/MASTER_STATUS.md`
+  - `src/backend/Sboss.Api/**`
+  - `src/backend/Sboss.Contracts/**`
+  - `src/backend/Sboss.Domain/**`
+  - `src/backend/Sboss.Infrastructure/**`
+  - `src/backend/tests/**`
+  - `src/backend/db/schema.sql` only if a strict endpoint-contract requirement forces a schema comment or alignment
+  - `src/backend/db/migrations/**` only if strictly required and justified
+- **Non-goals:**
+  - No auth/identity expansion
+  - No Unity/client work
+  - No payout logic
+  - No inventory binding
+  - No tick engine
+  - No future-phase company progression systems
+  - No broad refactor of existing services
+- **Acceptance criteria:**
+  - Repo status files reflect actual main-branch state after merged 1F
+  - P1F is closed as DONE with PR #23 recorded
+  - P1G is the active IN_PROGRESS task
+  - `docs/MASTER_STATUS.md` and `PLANS.md` agree exactly on current task = 1G and next task = 1H
+  - No files outside the allowed docs are changed in this PR
+- **Blockers:** None recorded.
+- **Follow-up review actions (2026-03-23):**
+  - Keep `src/backend/tests/Sboss.Api.Tests/RoadmapStatusGuardrailTests.cs` aligned with the active `docs/MASTER_STATUS.md` / `PLANS.md` task pair so the roadmap validation fixture continues to represent the checked-in repo state after 1G/1H transitions.
+- **Last updated:** 2026-03-23
 
 ---
 
