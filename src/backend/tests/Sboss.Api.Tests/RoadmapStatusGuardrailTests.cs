@@ -5,7 +5,7 @@ namespace Sboss.Api.Tests;
 
 public sealed class RoadmapStatusGuardrailTests
 {
-    private const string ActiveTaskId = "P1G-FIRST-VERTICAL-SLICE-HTTP-ENDPOINTS";
+    private const string ActiveTaskId = "P1H-INTEGRATION-TESTS-FOR-EXPLOIT-RESISTANCE";
 
     [Fact]
     public void ValidationScript_PassesForCurrentRepoState()
@@ -48,7 +48,7 @@ public sealed class RoadmapStatusGuardrailTests
     public void ValidationScript_FailsWhenNextTaskSkipsAhead()
     {
         var masterStatus = File.ReadAllText(ResolveRepoPath("docs/MASTER_STATUS.md"));
-        masterStatus = masterStatus.Replace("- Next task: **1H — Integration tests for exploit resistance**", "- Next task: **1I — Hardening + invariants**", StringComparison.Ordinal);
+        masterStatus = masterStatus.Replace("- Next task: **1I — Hardening + invariants**", "- Next task: **2A — Tick model + schema**", StringComparison.Ordinal);
 
         var result = RunValidation(ResolveRepoPath("PLANS.md"), WriteTempFile(masterStatus), taskId: ActiveTaskId);
 

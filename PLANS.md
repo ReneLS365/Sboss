@@ -8,41 +8,41 @@
 
 ---
 
-## Task Record — P1G-SCOPE-LOCK-AND-STATUS-ALIGNMENT
-- **Task ID:** P1G-SCOPE-LOCK-AND-STATUS-ALIGNMENT
-- **Title:** Phase 1G scope lock and status alignment
+## Task Record — P1H-INTEGRATION-TESTS-FOR-EXPLOIT-RESISTANCE
+- **Task ID:** P1H-INTEGRATION-TESTS-FOR-EXPLOIT-RESISTANCE
+- **Title:** Phase 1H integration tests for exploit resistance
 - **Phase:** Phase 1 — Authoritative Core Domain
 - **Status:** IN_PROGRESS
 - **Branch:** work
-- **PR:** Draft PR pending
+- **PR:** #26 (draft)
 - **Scope:**
-  - Audit the current Phase 1 HTTP slice already present in the repo for economy transactions, contract job transitions, and contract job applications.
-  - Lock the exact closure criteria for 1G in repo docs so Phase 1 can finish in roadmap order without scope drift.
-  - Align README and workflow/source-of-truth docs so roadmap/progress ownership is declared once and consistently.
+  - Add Phase 1H exploit-resistance integration coverage over the authoritative HTTP slice already delivered in 1G.
+  - Keep validation focused on replay, double-processing, skip-order, and other hostile-client abuse paths around economy transactions and contract job mutations.
+  - Preserve the current server-authoritative architecture while hardening integration coverage before Phase 1I invariants work begins.
 - **Allowed files:**
   - `PLANS.md`
   - `README.md`
   - `docs/MASTER_STATUS.md`
-  - `docs/CODEX_WORKFLOW.md`
-  - `docs/SOURCE_OF_TRUTH.md`
+  - `src/backend/Sboss.Api/**`
+  - `src/backend/Sboss.Domain/**`
+  - `src/backend/Sboss.Contracts/**`
+  - `src/backend/Sboss.Infrastructure/**`
+  - `src/backend/tests/**`
+  - `src/backend/db/**` only if a strict exploit-test prerequisite requires additive fixture/schema alignment
 - **Non-goals:**
-  - No new endpoints or runtime behavior.
-  - No service, repository, domain, database, CI, or client changes.
-  - No Phase 2 tick work, auth work, company progression, inventory, or economy hardening.
-  - No ClickUp assumptions beyond what can be anchored to repo governance docs.
+  - No Phase 2 tick engine work.
+  - No auth/identity expansion.
+  - No Unity/client changes.
+  - No company progression, inventory, payout, or future-phase systems beyond exploit-resistance coverage for the existing Phase 1 slice.
 - **Acceptance criteria:**
-  - `PLANS.md` explicitly records whether 1G is already functionally covered by the existing endpoint slice or names a narrow remaining gap.
-  - `README.md` no longer points to 1B as the current next task and instead reflects the current Phase 1 position.
-  - `docs/CODEX_WORKFLOW.md` and `docs/SOURCE_OF_TRUTH.md` no longer conflict about who owns roadmap/progress status.
-  - `docs/MASTER_STATUS.md` advances from 1G to 1H only if the audit confirms the existing Phase 1 HTTP slice already covers the 1G closure scope.
+  - Exploit-resistance integration tests exist for the current authoritative HTTP mutation slice where replay, duplicate processing, or invalid transition ordering could corrupt state.
+  - Added coverage proves hostile-client mutation attempts fail without broadening runtime scope beyond the current Phase 1 slice.
+  - `docs/MASTER_STATUS.md` and `README.md` show 1H as current and 1I as next while this PR remains open.
+  - `PLANS.md` keeps 1H as the single active Phase 1 task until the branch merges.
 - **Blockers:** None recorded.
-- **Audit conclusion:**
-  - The current repo already contains the Phase 1G HTTP write slice for the scoped Phase 1 services:
-    - economy transactions via `POST /api/v1/economy/transactions`
-    - contract job transitions via `POST /api/v1/contract-jobs/{contractJobId}/transitions`
-    - contract job applications via submit, withdraw, and accept mutation endpoints under `/api/v1/contract-jobs/{contractJobId}/applications`
-  - Endpoint-focused integration coverage for those paths already exists under `src/backend/tests/Sboss.Api.Tests/`.
-  - No remaining 1G runtime gap was identified by this audit; the required action is to close status drift and advance to 1H.
+- **Prerequisite note:**
+  - Phase 1G is already closed by the merged authoritative HTTP write slice for economy transactions, contract job transitions, and contract job applications.
+  - This open branch now tracks the follow-up Phase 1H exploit-resistance integration-test work only.
 - **Last updated:** 2026-03-23
 
 ---
