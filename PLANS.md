@@ -12,9 +12,9 @@
 - **Task ID:** P1G-SCOPE-LOCK-AND-STATUS-ALIGNMENT
 - **Title:** Phase 1G scope lock and status alignment
 - **Phase:** Phase 1 — Authoritative Core Domain
-- **Status:** IN_PROGRESS
+- **Status:** DONE
 - **Branch:** work
-- **PR:** Draft PR pending
+- **PR:** #25
 - **Scope:**
   - Audit the current Phase 1 HTTP slice already present in the repo for economy transactions, contract job transitions, and contract job applications.
   - Lock the exact closure criteria for 1G in repo docs so Phase 1 can finish in roadmap order without scope drift.
@@ -43,6 +43,39 @@
     - contract job applications via submit, withdraw, and accept mutation endpoints under `/api/v1/contract-jobs/{contractJobId}/applications`
   - Endpoint-focused integration coverage for those paths already exists under `src/backend/tests/Sboss.Api.Tests/`.
   - No remaining 1G runtime gap was identified by this audit; the required action is to close status drift and advance to 1H.
+- **Follow-up review actions (2026-03-23):**
+  - Advance the canonical current-task header in `docs/MASTER_STATUS.md` from 1G to 1H when marking 1G complete so the roadmap header and Phase 1 checklist stay aligned.
+  - Keep any mirrored roadmap-position references in contributor-facing docs aligned to `docs/MASTER_STATUS.md` after the 1G completion update.
+- **Last updated:** 2026-03-23
+
+---
+
+## Task Record — P1H-INTEGRATION-TESTS-FOR-EXPLOIT-RESISTANCE
+- **Task ID:** P1H-INTEGRATION-TESTS-FOR-EXPLOIT-RESISTANCE
+- **Title:** Phase 1H integration tests for exploit resistance
+- **Phase:** Phase 1 — Authoritative Core Domain
+- **Status:** IN_PROGRESS
+- **Branch:** work
+- **PR:** Draft PR pending
+- **Scope:**
+  - Add integration-test coverage for exploit-resistance behavior across the current authoritative Phase 1 HTTP write slice.
+  - Exercise duplicate, invalid, or out-of-order mutation attempts against economy transactions, contract job transitions, and contract job application flows.
+  - Keep the work inside the existing Phase 1 service and API surface with no Phase 1I hardening expansion.
+- **Allowed files:**
+  - `PLANS.md`
+  - `docs/MASTER_STATUS.md`
+  - `src/backend/tests/Sboss.Api.Tests/**`
+  - `src/backend/Sboss.Api/**` only if testability requires a minimal, scoped fix for an existing exploit-resistance invariant
+  - `src/backend/Sboss.Application/**` only if testability requires a minimal, scoped fix for an existing exploit-resistance invariant
+- **Non-goals:**
+  - No new endpoints, schemas, or roadmap progression beyond Phase 1H.
+  - No Unity/client work, auth expansion, tick-engine work, or company/inventory/economy feature expansion.
+  - No Phase 1I hardening work beyond what a failing exploit-resistance test proves is strictly necessary to make the current slice correct.
+- **Acceptance criteria:**
+  - Integration tests cover exploit-resistance scenarios for the current Phase 1 write endpoints.
+  - Any required code changes remain minimal and directly justified by failing exploit-resistance coverage.
+  - `docs/MASTER_STATUS.md` remains aligned with the active Phase 1H task until Phase 1H is actually complete.
+- **Blockers:** None recorded.
 - **Last updated:** 2026-03-23
 
 ---
