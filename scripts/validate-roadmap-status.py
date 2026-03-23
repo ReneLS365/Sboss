@@ -76,6 +76,19 @@ def extract_master_phase_tasks(text: str):
     return tasks
 
 
+def extract_all_master_tasks(text: str):
+    tasks = []
+    for line in text.splitlines():
+        match = MASTER_TASK_RE.match(line.strip())
+        if match:
+            tasks.append({
+                'step': match.group('step').upper(),
+                'done': match.group('done').lower() == 'x',
+                'title': match.group('title').strip(),
+            })
+    return tasks
+
+
 def fail(message: str):
     print(f"STATUS VALIDATION FAILED: {message}", file=sys.stderr)
     raise SystemExit(1)
@@ -141,7 +154,13 @@ def main():
 
     require(active_task.step == current_step, 'docs/MASTER_STATUS.md Current task does not match the active PLANS task.')
 
-    expected_next = roadmap_steps[active_index + 1] if active_index + 1 < len(roadmap_steps) else active_task.step
+    if active_index + 1 < len(roadmap_steps):
+        expected_next = roadmap_steps[active_index + 1]
+    else:
+        all_master_tasks = extract_all_master_tasks(master_text)
+        all_steps = [task['step'] for task in all_master_tasks]
+        all_index = all_steps.index(active_task.step)
+        expected_next = all_steps[all_index + 1] if all_index + 1 < len(all_steps) else active_task.step
     require(next_step == expected_next, 'docs/MASTER_STATUS.md Next task skips ahead or reorders the roadmap.')
 
     for task in master_tasks:

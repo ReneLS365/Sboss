@@ -54,32 +54,37 @@
 
 ---
 
-## Task Record — P1H-INTEGRATION-TESTS-FOR-EXPLOIT-RESISTANCE
-- **Task ID:** P1H-INTEGRATION-TESTS-FOR-EXPLOIT-RESISTANCE
-- **Title:** Phase 1H integration tests for exploit resistance
+## Task Record — P1I-HARDENING-AND-INVARIANTS
+- **Task ID:** P1I-HARDENING-AND-INVARIANTS
+- **Title:** Phase 1I hardening and invariants
 - **Phase:** Phase 1 — Authoritative Core Domain
 - **Status:** IN_PROGRESS
 - **Branch:** work
 - **PR:** Draft PR pending
 - **Scope:**
-  - Add integration-test coverage for exploit-resistance behavior across the current authoritative Phase 1 HTTP write slice.
-  - Exercise duplicate, invalid, or out-of-order mutation attempts against economy transactions, contract job transitions, and contract job application flows.
-  - Keep the work inside the existing Phase 1 service and API surface with no Phase 1I hardening expansion.
+  - Close roadmap drift now that the existing exploit-resistance integration coverage already satisfies Phase 1H.
+  - Audit and tighten authoritative backend invariants for the current Phase 1 HTTP mutation slice without expanding into Phase 2 systems.
+  - Keep hardening scoped to server-owned validation, conflict handling, and invariant enforcement for the already-shipped Phase 1 services.
 - **Allowed files:**
   - `PLANS.md`
+  - `README.md`
   - `docs/MASTER_STATUS.md`
-  - `src/backend/tests/Sboss.Api.Tests/**`
-  - `src/backend/Sboss.Api/**` only if testability requires a minimal, scoped fix for an existing exploit-resistance invariant
-  - `src/backend/Sboss.Application/**` only if testability requires a minimal, scoped fix for an existing exploit-resistance invariant
+  - `scripts/**`
+  - `src/backend/tests/**`
+  - `src/backend/Sboss.Api/**` only if a Phase 1 invariant gap requires a minimal, directly justified fix
+  - `src/backend/Sboss.Application/**` only if a Phase 1 invariant gap requires a minimal, directly justified fix
 - **Non-goals:**
-  - No new endpoints, schemas, or roadmap progression beyond Phase 1H.
-  - No Unity/client work, auth expansion, tick-engine work, or company/inventory/economy feature expansion.
-  - No Phase 1I hardening work beyond what a failing exploit-resistance test proves is strictly necessary to make the current slice correct.
+  - No Phase 2 tick-engine work.
+  - No Unity/client changes, auth expansion, or new feature-surface additions.
+  - No reopening of Phase 1H except to record that its exploit-resistance coverage is already complete.
 - **Acceptance criteria:**
-  - Integration tests cover exploit-resistance scenarios for the current Phase 1 write endpoints.
-  - Any required code changes remain minimal and directly justified by failing exploit-resistance coverage.
-  - `docs/MASTER_STATUS.md` remains aligned with the active Phase 1H task until Phase 1H is actually complete.
+  - `docs/MASTER_STATUS.md`, `README.md`, and `PLANS.md` all show Phase 1I as the active Phase 1 task.
+  - Roadmap guardrails accept a transition where the last task in the current phase points next to the first task in the following phase.
+  - Existing Phase 1H exploit-resistance coverage remains documented as complete rather than re-opened.
 - **Blockers:** None recorded.
+- **Audit conclusion:**
+  - The current repo already contains hostile-client and duplicate-replay integration coverage for the scoped Phase 1 HTTP write slice under `src/backend/tests/Sboss.Api.Tests/`.
+  - Phase 1H is therefore complete; the required follow-up is to advance the active roadmap task to Phase 1I and keep guardrail validation aligned with that canonical state.
 - **Last updated:** 2026-03-23
 
 ---
