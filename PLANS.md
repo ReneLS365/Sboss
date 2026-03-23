@@ -356,6 +356,8 @@
   - `docs/MASTER_STATUS.md` and `PLANS.md` agree exactly on current task = 1G and next task = 1H
   - No files outside the allowed docs are changed in this PR
 - **Blockers:** None recorded.
+- **Follow-up review actions (2026-03-23):**
+  - Keep `src/backend/tests/Sboss.Api.Tests/RoadmapStatusGuardrailTests.cs` aligned with the active `docs/MASTER_STATUS.md` / `PLANS.md` task pair so the roadmap validation fixture continues to represent the checked-in repo state after 1G/1H transitions.
 - **Last updated:** 2026-03-23
 
 ---
