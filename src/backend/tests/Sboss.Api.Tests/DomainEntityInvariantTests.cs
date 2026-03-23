@@ -201,6 +201,37 @@ public sealed class DomainEntityInvariantTests
     }
 
     [Fact]
+    public void ContractJobApplication_ValidTransitions_IncrementsVersionAndState()
+    {
+        var createdAt = DateTimeOffset.UtcNow;
+        var application = ContractJobApplication.Create(Guid.NewGuid(), Guid.NewGuid(), createdAt);
+
+        var withdrawn = application.Withdraw(createdAt.AddMinutes(1));
+        var accepted = application.Accept(createdAt.AddMinutes(2));
+        var rejected = application.Reject(createdAt.AddMinutes(3));
+
+        Assert.Equal(ContractJobApplicationStatus.Withdrawn, withdrawn.Status);
+        Assert.Equal(2, withdrawn.Version);
+        Assert.Equal(ContractJobApplicationStatus.Accepted, accepted.Status);
+        Assert.Equal(2, accepted.Version);
+        Assert.Equal(ContractJobApplicationStatus.Rejected, rejected.Status);
+        Assert.Equal(2, rejected.Version);
+    }
+
+    [Fact]
+    public void ContractJobApplication_InvalidTransition_DoesNotMutateState()
+    {
+        var createdAt = DateTimeOffset.UtcNow;
+        var application = ContractJobApplication.Create(Guid.NewGuid(), Guid.NewGuid(), createdAt).Withdraw(createdAt.AddMinutes(1));
+
+        var exception = Assert.Throws<InvalidOperationException>(() => application.Accept(createdAt.AddMinutes(2)));
+
+        Assert.Equal("Contract job application transition from Withdrawn to Accepted is not allowed.", exception.Message);
+        Assert.Equal(ContractJobApplicationStatus.Withdrawn, application.Status);
+        Assert.Equal(2, application.Version);
+    }
+
+    [Fact]
     public void DomainEntities_DoNotExposePublicSettersOnCriticalState()
     {
         AssertNoPublicSetter<Account>(nameof(Account.AccountId), nameof(Account.ExternalRef), nameof(Account.CreatedAt), nameof(Account.UpdatedAt), nameof(Account.Version));
@@ -208,6 +239,7 @@ public sealed class DomainEntityInvariantTests
         AssertNoPublicSetter<LevelSeed>(nameof(LevelSeed.LevelSeedId), nameof(LevelSeed.SeedValue), nameof(LevelSeed.Biome), nameof(LevelSeed.Template), nameof(LevelSeed.Objective), nameof(LevelSeed.ModifiersJson), nameof(LevelSeed.ParTimeMs), nameof(LevelSeed.GoldTimeMs), nameof(LevelSeed.Version), nameof(LevelSeed.CreatedAt), nameof(LevelSeed.UpdatedAt));
         AssertNoPublicSetter<MatchResult>(nameof(MatchResult.MatchResultId), nameof(MatchResult.AccountId), nameof(MatchResult.SeasonId), nameof(MatchResult.LevelSeedId), nameof(MatchResult.Score), nameof(MatchResult.ClearTimeMs), nameof(MatchResult.ComboMax), nameof(MatchResult.Penalties), nameof(MatchResult.ValidationStatus), nameof(MatchResult.CreatedAt), nameof(MatchResult.UpdatedAt), nameof(MatchResult.Version));
         AssertNoPublicSetter<ContractJob>(nameof(ContractJob.ContractJobId), nameof(ContractJob.OwningAccountId), nameof(ContractJob.CurrentState), nameof(ContractJob.CreatedAt), nameof(ContractJob.UpdatedAt), nameof(ContractJob.Version));
+        AssertNoPublicSetter<ContractJobApplication>(nameof(ContractJobApplication.ContractJobApplicationId), nameof(ContractJobApplication.ContractJobId), nameof(ContractJobApplication.ApplicantAccountId), nameof(ContractJobApplication.Status), nameof(ContractJobApplication.CreatedAt), nameof(ContractJobApplication.UpdatedAt), nameof(ContractJobApplication.Version));
     }
 
     private static void AssertNoPublicSetter<T>(params string[] propertyNames)

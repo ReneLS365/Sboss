@@ -1,0 +1,3 @@
+namespace Sboss.Contracts.ContractJobApplications;
+
+public sealed record PostContractJobApplicationMutationRequest(string IdempotencyKey);
