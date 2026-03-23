@@ -307,6 +307,8 @@
 - **Follow-up review actions (2026-03-22):**
   - Scope contract job application idempotency lookups by `mutation_kind` so submit/withdraw/accept retries cannot suppress a different mutation that reused the same key on the same job.
   - Reconstruct idempotent replay responses from the original recorded mutation/transition result instead of the current live application/job rows so later state changes do not change the replay payload.
+- **Review fix notes (2026-03-22):**
+  - Keep the existing replay lookup semantics, but narrow the authoritative database uniqueness for `contract_job_application_mutations` to `(contract_job_id, mutation_kind, idempotency_key)` so different mutation kinds can legally reuse the same idempotency key on the same job.
 - **Last updated:** 2026-03-22
 
 ---

@@ -28,5 +28,5 @@ CREATE TABLE IF NOT EXISTS contract_job_application_mutations (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT contract_job_application_mutations_kind_valid CHECK (mutation_kind IN ('Submit', 'Withdraw', 'Accept')),
   CONSTRAINT contract_job_application_mutations_resulting_version_positive CHECK (resulting_version > 0),
-  CONSTRAINT contract_job_application_mutations_idempotency_unique UNIQUE (contract_job_id, idempotency_key)
+  CONSTRAINT contract_job_application_mutations_idempotency_unique UNIQUE (contract_job_id, mutation_kind, idempotency_key)
 );

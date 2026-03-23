@@ -67,6 +67,7 @@ public sealed class SchemaSanityTests
         Assert.Contains("contract_job_applications_submitted_unique", migration, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("contract_job_applications_accepted_unique", migration, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("contract_job_application_mutations_idempotency_unique", migration, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("UNIQUE (contract_job_id, mutation_kind, idempotency_key)", migration, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
