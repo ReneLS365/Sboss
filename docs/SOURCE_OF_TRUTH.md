@@ -31,6 +31,16 @@ Source of truth for:
 - next roadmap task
 - canonical in-repo phase/progress status
 
+### `PLANS.md`
+Source of truth for:
+- scoped in-repo task execution records
+- current task scope
+- allowed files
+- forbidden files
+- non-goals
+- acceptance criteria
+- implementation notes tied to the active roadmap task
+
 ### Google Docs / Drive
 Source of truth for:
 - large working notes
@@ -39,21 +49,15 @@ Source of truth for:
 - archival drafts
 - human review documents that are not enforced by CI
 
-### ClickUp or equivalent task board
-Source of truth for:
-- backlog order
-- owner assignment
-- deadlines
-- planning triage that does not override repo roadmap state
-
 ## Non-negotiable rule
 The same operational truth must not live in two active places at once.
 
 ## Examples
 - PR state belongs in GitHub, not in a Google Doc.
-- Required checks belong in GitHub settings and workflow YAML, not in ClickUp.
+- Required checks belong in GitHub settings and workflow YAML, not in external notes.
 - Active architecture decisions belong in the repo, not in a stale PDF.
-- Current roadmap phase/task status belongs in `docs/MASTER_STATUS.md`, not in ClickUp.
+- Current roadmap phase/task status belongs in `docs/MASTER_STATUS.md`, not in any external planning system.
+- Scoped execution details belong in `PLANS.md`, but they must not contradict `docs/MASTER_STATUS.md`.
 - Legacy brainstorm material can stay in Drive, but it does not override repo state.
 
 ## Naming rule
