@@ -12,20 +12,20 @@ Sboss is bootstrapped as a server-authoritative online game foundation where .NE
 - CI: GitHub Actions
 
 ## Current Roadmap Phase
-- **Phase 1 (Authoritative Core Domain)**
+ - **Phase 2 (Core Gameplay Validation)**
 
 ## Project Status
 Project status, explicit current phase, and next task are tracked in [docs/MASTER_STATUS.md](docs/MASTER_STATUS.md).
 
 Current roadmap position:
-- **Current task: 1I — Hardening + invariants**
-- **Next task: 2A — Tick model + schema**
+ - **Current task: 2A — Command Validation Queue**
+ - **Next task: 2B — Unity Isometrisk Shell**
 
 ## Execution Model
 - Roadmap and progress source of truth: [docs/MASTER_STATUS.md](docs/MASTER_STATUS.md)
 - Repository execution and governance workflow: [docs/CODEX_WORKFLOW.md](docs/CODEX_WORKFLOW.md)
 - Task definition format for scoped work: [docs/TASK_TEMPLATE.md](docs/TASK_TEMPLATE.md)
-- Execution follows the roadmap phase declared in `docs/MASTER_STATUS.md`; `PLANS.md` is the execution ledger for scoped task records inside that active phase.
+ - Execution follows the roadmap phase declared in `docs/MASTER_STATUS.md`.
 
 ## Local Setup
 1. Copy env file:
