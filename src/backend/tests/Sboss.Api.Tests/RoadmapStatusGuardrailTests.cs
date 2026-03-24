@@ -9,7 +9,7 @@ public sealed class RoadmapStatusGuardrailTests
     private const string ActiveTaskId = "P1I-HARDENING-AND-INVARIANTS";
     private static readonly Regex MasterCurrentTaskRegex = new("^- Current task:\\s+\\*\\*(?<step>\\d+[A-Z])\\s+[—-]\\s+(?<title>.+)\\*\\*$", RegexOptions.Multiline);
     private static readonly Regex MasterNextTaskRegex = new("^- Next task:\\s+\\*\\*(?<step>\\d+[A-Z])\\s+[—-]\\s+(?<title>.+)\\*\\*$", RegexOptions.Multiline);
-    private static readonly Regex PlanInProgressTaskIdRegex = new("## Task Record — (?<taskId>.+?)\\r?\\n(?:.|\\r?\\n)*?- \\*\\*Status:\\*\\* IN_PROGRESS", RegexOptions.Singleline);
+    private static readonly Regex PlanInProgressTaskIdRegex = new("## Task Record — (?<taskId>.+?)\\r?\\n(?:(?!\\r?\\n## Task Record — )[\\s\\S])*?- \\*\\*Status:\\*\\* IN_PROGRESS", RegexOptions.Singleline);
 
     [Fact]
     public void ValidationScript_PassesForCurrentRepoState()
