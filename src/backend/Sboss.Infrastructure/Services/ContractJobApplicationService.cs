@@ -83,7 +83,13 @@ public sealed class ContractJobApplicationService : IContractJobApplicationServi
         catch (PostgresException exception) when (exception.SqlState == UniqueViolationSqlState)
         {
             await transaction.RollbackAsync(cancellationToken);
-            return await LoadReplayOrThrowConflictAsync(normalized.ContractJobId, SubmitMutationKind, normalized.IdempotencyKey, "An active submitted application already exists for this applicant and contract job.", cancellationToken);
+            return await LoadReplayOrThrowConflictAsync(
+                normalized.ContractJobId,
+                SubmitMutationKind,
+                normalized.IdempotencyKey,
+                "An active submitted application already exists for this applicant and contract job.",
+                cancellationToken,
+                expectedApplicantAccountId: normalized.ApplicantAccountId);
         }
     }
 

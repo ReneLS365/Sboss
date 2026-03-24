@@ -87,6 +87,8 @@
 - **Audit conclusion:**
   - The current repo already contains hostile-client and duplicate-replay integration coverage for the scoped Phase 1 HTTP write slice under `src/backend/tests/Sboss.Api.Tests/`.
   - Phase 1H is therefore complete; the required follow-up is to advance the active roadmap task to Phase 1I and keep guardrail validation aligned with that canonical state.
+- **Follow-up review actions (2026-03-24):**
+  - Enforce applicant intent binding on the submit unique-violation replay fallback path so concurrent same-key/different-applicant submit races cannot replay another applicant's mutation.
 - **Last updated:** 2026-03-24
 
 ---
