@@ -30,7 +30,12 @@ public sealed class ContractJobApplicationService : IContractJobApplicationServi
         var replay = await _applicationRepository.GetMutationByIdempotencyKeyAsync(connection, transaction, normalized.ContractJobId, SubmitMutationKind, normalized.IdempotencyKey, cancellationToken);
         if (replay is not null)
         {
-            var replayResult = await BuildReplayResultAsync(connection, transaction, replay, cancellationToken);
+            var replayResult = await BuildReplayResultAsync(
+                connection,
+                transaction,
+                replay,
+                cancellationToken,
+                expectedApplicantAccountId: normalized.ApplicantAccountId);
             await transaction.CommitAsync(cancellationToken);
             return replayResult;
         }
@@ -46,10 +51,21 @@ public sealed class ContractJobApplicationService : IContractJobApplicationServi
             throw new ContractJobApplicationServiceException(ContractJobApplicationFailureReason.Conflict, $"Contract job applications are only allowed while the job is Open. Current state: {job.CurrentState}.");
         }
 
+        var applicantAccountExists = await AccountExistsAsync(connection, transaction, normalized.ApplicantAccountId, cancellationToken);
+        if (!applicantAccountExists)
+        {
+            throw new ContractJobApplicationServiceException(ContractJobApplicationFailureReason.NotFound, "Applicant account does not exist.");
+        }
+
         replay = await _applicationRepository.GetMutationByIdempotencyKeyAsync(connection, transaction, normalized.ContractJobId, SubmitMutationKind, normalized.IdempotencyKey, cancellationToken);
         if (replay is not null)
         {
-            var replayResult = await BuildReplayResultAsync(connection, transaction, replay, cancellationToken);
+            var replayResult = await BuildReplayResultAsync(
+                connection,
+                transaction,
+                replay,
+                cancellationToken,
+                expectedApplicantAccountId: normalized.ApplicantAccountId);
             await transaction.CommitAsync(cancellationToken);
             return replayResult;
         }
@@ -81,7 +97,12 @@ public sealed class ContractJobApplicationService : IContractJobApplicationServi
         var replay = await _applicationRepository.GetMutationByIdempotencyKeyAsync(connection, transaction, normalized.ContractJobId, WithdrawMutationKind, normalized.IdempotencyKey, cancellationToken);
         if (replay is not null)
         {
-            var replayResult = await BuildReplayResultAsync(connection, transaction, replay, cancellationToken);
+            var replayResult = await BuildReplayResultAsync(
+                connection,
+                transaction,
+                replay,
+                cancellationToken,
+                expectedApplicationId: normalized.ApplicationId);
             await transaction.CommitAsync(cancellationToken);
             return replayResult;
         }
@@ -106,7 +127,12 @@ public sealed class ContractJobApplicationService : IContractJobApplicationServi
         replay = await _applicationRepository.GetMutationByIdempotencyKeyAsync(connection, transaction, normalized.ContractJobId, WithdrawMutationKind, normalized.IdempotencyKey, cancellationToken);
         if (replay is not null)
         {
-            var replayResult = await BuildReplayResultAsync(connection, transaction, replay, cancellationToken);
+            var replayResult = await BuildReplayResultAsync(
+                connection,
+                transaction,
+                replay,
+                cancellationToken,
+                expectedApplicationId: normalized.ApplicationId);
             await transaction.CommitAsync(cancellationToken);
             return replayResult;
         }
@@ -124,7 +150,13 @@ public sealed class ContractJobApplicationService : IContractJobApplicationServi
         catch (PostgresException exception) when (exception.SqlState == UniqueViolationSqlState)
         {
             await transaction.RollbackAsync(cancellationToken);
-            return await LoadReplayOrThrowConflictAsync(normalized.ContractJobId, WithdrawMutationKind, normalized.IdempotencyKey, "Contract job application withdraw conflict detected.", cancellationToken);
+            return await LoadReplayOrThrowConflictAsync(
+                normalized.ContractJobId,
+                WithdrawMutationKind,
+                normalized.IdempotencyKey,
+                "Contract job application withdraw conflict detected.",
+                cancellationToken,
+                expectedApplicationId: normalized.ApplicationId);
         }
 
         await transaction.CommitAsync(cancellationToken);
@@ -141,7 +173,13 @@ public sealed class ContractJobApplicationService : IContractJobApplicationServi
         var replay = await _applicationRepository.GetMutationByIdempotencyKeyAsync(connection, transaction, normalized.ContractJobId, AcceptMutationKind, normalized.IdempotencyKey, cancellationToken);
         if (replay is not null)
         {
-            var replayResult = await BuildReplayResultAsync(connection, transaction, replay, cancellationToken, includeJobState: true);
+            var replayResult = await BuildReplayResultAsync(
+                connection,
+                transaction,
+                replay,
+                cancellationToken,
+                includeJobState: true,
+                expectedApplicationId: normalized.ApplicationId);
             await transaction.CommitAsync(cancellationToken);
             return replayResult;
         }
@@ -173,7 +211,13 @@ public sealed class ContractJobApplicationService : IContractJobApplicationServi
         replay = await _applicationRepository.GetMutationByIdempotencyKeyAsync(connection, transaction, normalized.ContractJobId, AcceptMutationKind, normalized.IdempotencyKey, cancellationToken);
         if (replay is not null)
         {
-            var replayResult = await BuildReplayResultAsync(connection, transaction, replay, cancellationToken, includeJobState: true);
+            var replayResult = await BuildReplayResultAsync(
+                connection,
+                transaction,
+                replay,
+                cancellationToken,
+                includeJobState: true,
+                expectedApplicationId: normalized.ApplicationId);
             await transaction.CommitAsync(cancellationToken);
             return replayResult;
         }
@@ -212,7 +256,14 @@ public sealed class ContractJobApplicationService : IContractJobApplicationServi
         catch (PostgresException exception) when (exception.SqlState == UniqueViolationSqlState)
         {
             await transaction.RollbackAsync(cancellationToken);
-            return await LoadReplayOrThrowConflictAsync(normalized.ContractJobId, AcceptMutationKind, normalized.IdempotencyKey, "Contract job accept conflict detected.", cancellationToken, includeJobState: true);
+            return await LoadReplayOrThrowConflictAsync(
+                normalized.ContractJobId,
+                AcceptMutationKind,
+                normalized.IdempotencyKey,
+                "Contract job accept conflict detected.",
+                cancellationToken,
+                includeJobState: true,
+                expectedApplicationId: normalized.ApplicationId);
         }
         catch (ContractJobTransitionServiceException exception)
         {
@@ -271,7 +322,9 @@ public sealed class ContractJobApplicationService : IContractJobApplicationServi
         string idempotencyKey,
         string fallbackMessage,
         CancellationToken cancellationToken,
-        bool includeJobState = false)
+        bool includeJobState = false,
+        Guid? expectedApplicationId = null,
+        Guid? expectedApplicantAccountId = null)
     {
         await using var replayConnection = await _dataSource.OpenConnectionAsync(cancellationToken);
         await using var replayTransaction = await replayConnection.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
@@ -281,7 +334,14 @@ public sealed class ContractJobApplicationService : IContractJobApplicationServi
             throw new ContractJobApplicationServiceException(ContractJobApplicationFailureReason.Conflict, fallbackMessage);
         }
 
-        var replayResult = await BuildReplayResultAsync(replayConnection, replayTransaction, replay, cancellationToken, includeJobState);
+        var replayResult = await BuildReplayResultAsync(
+            replayConnection,
+            replayTransaction,
+            replay,
+            cancellationToken,
+            includeJobState,
+            expectedApplicationId,
+            expectedApplicantAccountId);
         await replayTransaction.CommitAsync(cancellationToken);
         return replayResult;
     }
@@ -291,10 +351,14 @@ public sealed class ContractJobApplicationService : IContractJobApplicationServi
         NpgsqlTransaction transaction,
         ContractJobApplicationMutationRecord replay,
         CancellationToken cancellationToken,
-        bool includeJobState = false)
+        bool includeJobState = false,
+        Guid? expectedApplicationId = null,
+        Guid? expectedApplicantAccountId = null)
     {
         var liveApplication = await _applicationRepository.GetByIdAsync(connection, transaction, replay.ContractJobApplicationId, false, cancellationToken)
             ?? throw new InvalidOperationException("Contract job application disappeared during replay lookup.");
+
+        EnsureReplayIntentMatches(replay, liveApplication, expectedApplicationId, expectedApplicantAccountId);
 
         var replayApplication = RehydrateReplayApplication(liveApplication, replay);
         ContractJobState? replayJobState = null;
@@ -350,5 +414,44 @@ public sealed class ContractJobApplicationService : IContractJobApplicationServi
         }
 
         return Enum.Parse<ContractJobState>(jobState, ignoreCase: false);
+    }
+
+    private static void EnsureReplayIntentMatches(
+        ContractJobApplicationMutationRecord replay,
+        ContractJobApplication liveApplication,
+        Guid? expectedApplicationId,
+        Guid? expectedApplicantAccountId)
+    {
+        if (expectedApplicationId.HasValue && replay.ContractJobApplicationId != expectedApplicationId.Value)
+        {
+            throw new ContractJobApplicationServiceException(
+                ContractJobApplicationFailureReason.Conflict,
+                "Idempotency key is already bound to a different contract job application target.");
+        }
+
+        if (expectedApplicantAccountId.HasValue && liveApplication.ApplicantAccountId != expectedApplicantAccountId.Value)
+        {
+            throw new ContractJobApplicationServiceException(
+                ContractJobApplicationFailureReason.Conflict,
+                "Idempotency key is already bound to a different contract job applicant intent.");
+        }
+    }
+
+    private static async Task<bool> AccountExistsAsync(
+        NpgsqlConnection connection,
+        NpgsqlTransaction transaction,
+        Guid accountId,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT 1
+            FROM accounts
+            WHERE account_id = @accountId
+            LIMIT 1;
+            """;
+
+        await using var command = new NpgsqlCommand(sql, connection, transaction);
+        command.Parameters.AddWithValue("accountId", accountId);
+        return await command.ExecuteScalarAsync(cancellationToken) is not null;
     }
 }

@@ -65,6 +65,8 @@
   - Close roadmap drift now that the existing exploit-resistance integration coverage already satisfies Phase 1H.
   - Audit and tighten authoritative backend invariants for the current Phase 1 HTTP mutation slice without expanding into Phase 2 systems.
   - Keep hardening scoped to server-owned validation, conflict handling, and invariant enforcement for the already-shipped Phase 1 services.
+  - Bind idempotent replay to original mutation intent for economy transactions, contract job transitions, and contract job applications so mismatched semantics cannot silently replay.
+  - Add exploit-resistance integration tests proving payload drift, target drift, route/resource mismatch, and unknown-reference writes are rejected with no partial writes.
 - **Allowed files:**
   - `PLANS.md`
   - `README.md`
@@ -85,7 +87,7 @@
 - **Audit conclusion:**
   - The current repo already contains hostile-client and duplicate-replay integration coverage for the scoped Phase 1 HTTP write slice under `src/backend/tests/Sboss.Api.Tests/`.
   - Phase 1H is therefore complete; the required follow-up is to advance the active roadmap task to Phase 1I and keep guardrail validation aligned with that canonical state.
-- **Last updated:** 2026-03-23
+- **Last updated:** 2026-03-24
 
 ---
 

@@ -79,6 +79,28 @@ public sealed class EconomyTransactionsEndpointTests
     }
 
     [Fact]
+    public async Task DuplicateKey_WithChangedPayloadIntent_IsRejectedWithoutReplayOrPartialWrite()
+    {
+        await _database.ResetAsync();
+        using var factory = new TestWebApplicationFactory(_database.ConnectionString);
+        using var client = factory.CreateClient();
+        const string idempotencyKey = "duplicate-intent-drift-001";
+
+        var firstResponse = await client.PostAsJsonAsync("/api/v1/economy/transactions",
+            new PostEconomyTransactionRequest(AccountId, "COIN", 15, idempotencyKey, "contract_reward"));
+        var driftResponse = await client.PostAsJsonAsync("/api/v1/economy/transactions",
+            new PostEconomyTransactionRequest(AccountId, "COIN", 25, idempotencyKey, "contract_reward"));
+
+        Assert.Equal(HttpStatusCode.OK, firstResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, driftResponse.StatusCode);
+
+        var state = await ReadEconomyStateAsync(AccountId, "COIN");
+        Assert.Equal(115, state.Balance);
+        Assert.Equal(2, state.LedgerCount);
+        Assert.Equal(115, state.LedgerSum);
+    }
+
+    [Fact]
     public async Task LateDuplicateRetry_ReplaysOriginalBalanceSnapshotAfterLaterMutation()
     {
         await _database.ResetAsync();

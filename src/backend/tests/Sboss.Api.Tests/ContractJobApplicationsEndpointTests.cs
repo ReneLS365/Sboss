@@ -89,6 +89,28 @@ public sealed class ContractJobApplicationsEndpointTests
     }
 
     [Fact]
+    public async Task SubmitApplication_DuplicateKeyWithDifferentApplicant_IsRejectedWithoutSilentReplay()
+    {
+        await _database.ResetAsync();
+        await InsertApplicantAccountAsync(ApplicantOneAccountId);
+        await InsertApplicantAccountAsync(ApplicantTwoAccountId);
+        var contractJobId = await InsertContractJobAsync(ContractJobState.Open, 2);
+        using var factory = new TestWebApplicationFactory(_database.ConnectionString);
+        using var client = factory.CreateClient();
+        const string idempotencyKey = "submit-applicant-drift-001";
+
+        var firstResponse = await client.PostAsJsonAsync($"/api/v1/contract-jobs/{contractJobId}/applications",
+            new PostContractJobApplicationRequest(ApplicantOneAccountId, idempotencyKey));
+        var driftResponse = await client.PostAsJsonAsync($"/api/v1/contract-jobs/{contractJobId}/applications",
+            new PostContractJobApplicationRequest(ApplicantTwoAccountId, idempotencyKey));
+
+        Assert.Equal(HttpStatusCode.OK, firstResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, driftResponse.StatusCode);
+        Assert.Equal(1, await CountApplicationsForJobAsync(contractJobId));
+        Assert.Equal(1, await CountApplicationMutationsForJobAsync(contractJobId));
+    }
+
+    [Fact]
     public async Task SubmitApplication_SameApplicantSecondActiveSubmission_IsRejected()
     {
         await _database.ResetAsync();
@@ -125,6 +147,34 @@ public sealed class ContractJobApplicationsEndpointTests
         Assert.NotNull(body);
         Assert.Equal("Withdrawn", body!.ApplicationStatus);
         Assert.Equal(2, body.Version);
+    }
+
+    [Fact]
+    public async Task WithdrawApplication_DuplicateKeyWithDifferentApplicationId_IsRejectedWithoutPartialWrite()
+    {
+        await _database.ResetAsync();
+        await InsertApplicantAccountAsync(ApplicantOneAccountId);
+        await InsertApplicantAccountAsync(ApplicantTwoAccountId);
+        var contractJobId = await InsertContractJobAsync(ContractJobState.Open, 2);
+        var firstApplicationId = await InsertApplicationAsync(contractJobId, ApplicantOneAccountId, ContractJobApplicationStatus.Submitted, 1);
+        var secondApplicationId = await InsertApplicationAsync(contractJobId, ApplicantTwoAccountId, ContractJobApplicationStatus.Submitted, 1);
+        using var factory = new TestWebApplicationFactory(_database.ConnectionString);
+        using var client = factory.CreateClient();
+        const string idempotencyKey = "withdraw-target-drift-001";
+
+        var firstResponse = await client.PostAsJsonAsync($"/api/v1/contract-jobs/{contractJobId}/applications/{firstApplicationId}/withdraw",
+            new PostContractJobApplicationMutationRequest(idempotencyKey));
+        var driftResponse = await client.PostAsJsonAsync($"/api/v1/contract-jobs/{contractJobId}/applications/{secondApplicationId}/withdraw",
+            new PostContractJobApplicationMutationRequest(idempotencyKey));
+
+        Assert.Equal(HttpStatusCode.OK, firstResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, driftResponse.StatusCode);
+
+        var firstState = await ReadApplicationSnapshotAsync(firstApplicationId);
+        var secondState = await ReadApplicationSnapshotAsync(secondApplicationId);
+        Assert.Equal("Withdrawn", firstState.Status);
+        Assert.Equal("Submitted", secondState.Status);
+        Assert.Equal(1, await CountApplicationMutationsForJobAsync(contractJobId));
     }
 
     [Fact]
@@ -280,6 +330,70 @@ public sealed class ContractJobApplicationsEndpointTests
         Assert.Equal(firstBody.ApplicationId, secondBody.ApplicationId);
         Assert.Equal(1, await CountApplicationMutationsForJobAsync(contractJobId));
         Assert.Equal(1, await CountContractJobTransitionsAsync(contractJobId));
+    }
+
+    [Fact]
+    public async Task AcceptApplication_DuplicateKeyWithDifferentApplicationId_IsRejectedWithoutPartialWrite()
+    {
+        await _database.ResetAsync();
+        await InsertApplicantAccountAsync(ApplicantOneAccountId);
+        await InsertApplicantAccountAsync(ApplicantTwoAccountId);
+        var contractJobId = await InsertContractJobAsync(ContractJobState.Open, 2);
+        var winnerApplicationId = await InsertApplicationAsync(contractJobId, ApplicantOneAccountId, ContractJobApplicationStatus.Submitted, 1);
+        var otherApplicationId = await InsertApplicationAsync(contractJobId, ApplicantTwoAccountId, ContractJobApplicationStatus.Submitted, 1);
+        using var factory = new TestWebApplicationFactory(_database.ConnectionString);
+        using var client = factory.CreateClient();
+        const string idempotencyKey = "accept-target-drift-001";
+
+        var firstResponse = await client.PostAsJsonAsync($"/api/v1/contract-jobs/{contractJobId}/applications/{winnerApplicationId}/accept",
+            new PostContractJobApplicationMutationRequest(idempotencyKey));
+        var driftResponse = await client.PostAsJsonAsync($"/api/v1/contract-jobs/{contractJobId}/applications/{otherApplicationId}/accept",
+            new PostContractJobApplicationMutationRequest(idempotencyKey));
+
+        Assert.Equal(HttpStatusCode.OK, firstResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, driftResponse.StatusCode);
+        Assert.Equal(1, await CountApplicationMutationsForJobAsync(contractJobId));
+        Assert.Equal(1, await CountContractJobTransitionsAsync(contractJobId));
+    }
+
+    [Fact]
+    public async Task ApplicationMutation_RejectsRouteResourceMismatchWithoutAnyMutation()
+    {
+        await _database.ResetAsync();
+        await InsertApplicantAccountAsync(ApplicantOneAccountId);
+        var contractJobOneId = await InsertContractJobAsync(ContractJobState.Open, 2);
+        var contractJobTwoId = await InsertContractJobAsync(ContractJobState.Open, 2);
+        var foreignApplicationId = await InsertApplicationAsync(contractJobTwoId, ApplicantOneAccountId, ContractJobApplicationStatus.Submitted, 1);
+        using var factory = new TestWebApplicationFactory(_database.ConnectionString);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync($"/api/v1/contract-jobs/{contractJobOneId}/applications/{foreignApplicationId}/withdraw",
+            new PostContractJobApplicationMutationRequest("route-mismatch-001"));
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal(0, await CountApplicationMutationsForJobAsync(contractJobOneId));
+        Assert.Equal(0, await CountContractJobTransitionsAsync(contractJobOneId));
+        Assert.Equal(0, await CountApplicationMutationsForJobAsync(contractJobTwoId));
+        var foreignState = await ReadApplicationSnapshotAsync(foreignApplicationId);
+        Assert.Equal("Submitted", foreignState.Status);
+        Assert.Equal(1, foreignState.Version);
+    }
+
+    [Fact]
+    public async Task SubmitApplication_UnknownApplicant_IsRejectedBeforeAnyWrite()
+    {
+        await _database.ResetAsync();
+        var contractJobId = await InsertContractJobAsync(ContractJobState.Open, 2);
+        var missingApplicantId = Guid.Parse("cdcdcdcd-cdcd-cdcd-cdcd-cdcdcdcdcdcd");
+        using var factory = new TestWebApplicationFactory(_database.ConnectionString);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync($"/api/v1/contract-jobs/{contractJobId}/applications",
+            new PostContractJobApplicationRequest(missingApplicantId, "submit-unknown-account-001"));
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal(0, await CountApplicationsForJobAsync(contractJobId));
+        Assert.Equal(0, await CountApplicationMutationsForJobAsync(contractJobId));
     }
 
     [Fact]
