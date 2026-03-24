@@ -31,6 +31,7 @@ public sealed class EconomyTransactionService : IEconomyTransactionService
 
         if (existingTransaction is not null)
         {
+            EnsureReplayIntentMatches(normalizedRequest, existingTransaction);
             await transaction.CommitAsync(cancellationToken);
             return new EconomyTransactionResult(existingTransaction, CreateReplayBalanceSnapshot(existingTransaction), true);
         }
@@ -100,6 +101,7 @@ public sealed class EconomyTransactionService : IEconomyTransactionService
                 throw;
             }
 
+            EnsureReplayIntentMatches(normalizedRequest, replayTransactionRecord);
             await replayTransaction.CommitAsync(cancellationToken);
             return new EconomyTransactionResult(replayTransactionRecord, CreateReplayBalanceSnapshot(replayTransactionRecord), true);
         }
@@ -393,5 +395,17 @@ public sealed class EconomyTransactionService : IEconomyTransactionService
             transaction.CreatedAt,
             transaction.CreatedAt,
             transaction.ResultingBalanceVersion);
+    }
+
+    private static void EnsureReplayIntentMatches(EconomyMutationRequest request, EconomyTransaction replayTransaction)
+    {
+        if (!string.Equals(request.CurrencyCode, replayTransaction.CurrencyCode, StringComparison.Ordinal) ||
+            request.AmountDelta != replayTransaction.AmountDelta ||
+            !string.Equals(request.Reason, replayTransaction.Reason, StringComparison.Ordinal))
+        {
+            throw new EconomyTransactionServiceException(
+                EconomyTransactionFailureReason.Conflict,
+                "Idempotency key is already bound to a different economy transaction intent.");
+        }
     }
 }

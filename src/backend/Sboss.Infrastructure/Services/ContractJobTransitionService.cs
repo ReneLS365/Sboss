@@ -30,6 +30,7 @@ public sealed class ContractJobTransitionService : IContractJobTransitionService
 
         if (existingTransition is not null)
         {
+            EnsureReplayIntentMatches(normalizedRequest, existingTransition);
             var existingJob = await ContractJobStateMutationHelper.GetContractJobAsync(connection, transaction, normalizedRequest.ContractJobId, false, cancellationToken);
             if (existingJob is null)
             {
@@ -65,6 +66,7 @@ public sealed class ContractJobTransitionService : IContractJobTransitionService
 
         if (existingTransition is not null)
         {
+            EnsureReplayIntentMatches(normalizedRequest, existingTransition);
             await transaction.CommitAsync(cancellationToken);
             return new ContractJobTransitionResult(
                 ContractJob.Rehydrate(
@@ -108,6 +110,7 @@ public sealed class ContractJobTransitionService : IContractJobTransitionService
                 throw;
             }
 
+            EnsureReplayIntentMatches(normalizedRequest, replayTransition);
             await replayTransaction.CommitAsync(cancellationToken);
             return new ContractJobTransitionResult(
                 ContractJob.Rehydrate(
@@ -194,4 +197,14 @@ public sealed class ContractJobTransitionService : IContractJobTransitionService
         ContractJobState ToState,
         long ResultingVersion,
         DateTimeOffset CreatedAt);
+
+    private static void EnsureReplayIntentMatches(ContractJobTransitionRequest request, ContractJobTransitionRecord replayTransition)
+    {
+        if (request.TargetState != replayTransition.ToState)
+        {
+            throw new ContractJobTransitionServiceException(
+                ContractJobTransitionFailureReason.InvalidTransition,
+                "Idempotency key is already bound to a different contract job transition target state.");
+        }
+    }
 }

@@ -121,6 +121,29 @@ public sealed class ContractJobsEndpointTests
     }
 
     [Fact]
+    public async Task DuplicateKey_WithDifferentTargetState_IsRejectedWithoutSilentReplay()
+    {
+        await _database.ResetAsync();
+        var contractJobId = await InsertContractJobAsync(ContractJobState.Open, 2);
+        using var factory = new TestWebApplicationFactory(_database.ConnectionString);
+        using var client = factory.CreateClient();
+        const string idempotencyKey = "job-target-drift-001";
+
+        var firstResponse = await client.PostAsJsonAsync($"/api/v1/contract-jobs/{contractJobId}/transitions",
+            new PostContractJobTransitionRequest("Accepted", idempotencyKey));
+        var driftResponse = await client.PostAsJsonAsync($"/api/v1/contract-jobs/{contractJobId}/transitions",
+            new PostContractJobTransitionRequest("Failed", idempotencyKey));
+
+        Assert.Equal(HttpStatusCode.OK, firstResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, driftResponse.StatusCode);
+
+        var state = await ReadContractJobStateAsync(contractJobId);
+        Assert.Equal("Accepted", state.CurrentState);
+        Assert.Equal(3, state.Version);
+        Assert.Equal(1, state.TransitionCount);
+    }
+
+    [Fact]
     public async Task ConcurrentDuplicateReplay_DoesNotDoubleApplyMutation()
     {
         await _database.ResetAsync();

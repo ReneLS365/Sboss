@@ -4,5 +4,6 @@ public enum EconomyTransactionFailureReason
 {
     UnknownAccount = 1,
     InsufficientFunds = 2,
-    InvalidRequest = 3
+    InvalidRequest = 3,
+    Conflict = 4
 }

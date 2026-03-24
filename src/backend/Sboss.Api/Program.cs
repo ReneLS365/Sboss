@@ -146,6 +146,10 @@ app.MapPost("/api/v1/economy/transactions", async (
             ["economyTransaction"] = new[] { exception.Message }
         });
     }
+    catch (EconomyTransactionServiceException exception) when (exception.Reason == EconomyTransactionFailureReason.Conflict)
+    {
+        return Results.Conflict(new { error = exception.Message });
+    }
 });
 
 app.MapPost("/api/v1/contract-jobs/{contractJobId:guid}/transitions", async (
