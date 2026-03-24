@@ -91,6 +91,7 @@
 - **Follow-up review actions (2026-03-24):**
   - Enforce applicant intent binding on the submit unique-violation replay fallback path so concurrent same-key/different-applicant submit races cannot replay another applicant's mutation.
   - Constrain roadmap guardrail task-state parsing to a single `## Task Record` block so `IN_PROGRESS` derivation cannot bind to an earlier `DONE` record.
+  - Generate `Last updated` values for auto-created task records from the runtime date instead of a hardcoded literal so roadmap metadata does not drift after 2026-03-24.
 - **Last updated:** 2026-03-24
 
 ---

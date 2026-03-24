@@ -2,6 +2,7 @@
 import argparse
 import re
 import sys
+from datetime import date
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -104,7 +105,7 @@ def update_plan_block(block: str, status: str | None = None, pr: str | None = No
 
 def build_task_record(step: str, title: str, phase_title: str):
     task_id = normalize_task_id(step, title)
-    today = "2026-03-24"
+    today = date.today().isoformat()
     return f"""
 ## Task Record — {task_id}
 - **Task ID:** {task_id}
