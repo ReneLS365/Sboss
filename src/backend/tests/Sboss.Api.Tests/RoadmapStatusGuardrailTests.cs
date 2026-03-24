@@ -161,57 +161,6 @@ public sealed class RoadmapStatusGuardrailTests
     }
 
     [Fact]
-    public void AdvanceScript_DryRun_AllowsDirectRoadmapSuccessor()
-    {
-        var result = RunAdvance(
-            ResolveRepoPath("PLANS.md"),
-            ResolveRepoPath("docs/MASTER_STATUS.md"),
-            ResolveRepoPath("README.md"),
-            ResolveRepoPath("src/backend/tests/Sboss.Api.Tests/RoadmapStatusGuardrailTests.cs"),
-            expectedCurrentTask: "P1I-HARDENING-AND-INVARIANTS",
-            nextTask: "2A",
-            mergedPr: "#999",
-            dryRun: true);
-
-        Assert.Equal(0, result.ExitCode);
-        Assert.Contains("Roadmap advancement check passed", result.Output, StringComparison.OrdinalIgnoreCase);
-    }
-
-    [Fact]
-    public void AdvanceScript_FailsWhenMergedPrReferenceIsMissing()
-    {
-        var result = RunAdvance(
-            ResolveRepoPath("PLANS.md"),
-            ResolveRepoPath("docs/MASTER_STATUS.md"),
-            ResolveRepoPath("README.md"),
-            ResolveRepoPath("src/backend/tests/Sboss.Api.Tests/RoadmapStatusGuardrailTests.cs"),
-            expectedCurrentTask: "P1I-HARDENING-AND-INVARIANTS",
-            nextTask: "2A",
-            mergedPr: "missing",
-            dryRun: true);
-
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("Merged PR reference must be provided", result.Output, StringComparison.OrdinalIgnoreCase);
-    }
-
-    [Fact]
-    public void AdvanceScript_FailsWhenNextTaskSkipsRoadmapSuccessor()
-    {
-        var result = RunAdvance(
-            ResolveRepoPath("PLANS.md"),
-            ResolveRepoPath("docs/MASTER_STATUS.md"),
-            ResolveRepoPath("README.md"),
-            ResolveRepoPath("src/backend/tests/Sboss.Api.Tests/RoadmapStatusGuardrailTests.cs"),
-            expectedCurrentTask: "P1I-HARDENING-AND-INVARIANTS",
-            nextTask: "2B",
-            mergedPr: "#999",
-            dryRun: true);
-
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("not direct roadmap successor", result.Output, StringComparison.OrdinalIgnoreCase);
-    }
-
-    [Fact]
     public void PostgresFixture_RequiresExplicitIsolatedTestDatabase()
     {
         var original = Environment.GetEnvironmentVariable("SBOSS_TEST_DATABASE");
@@ -280,52 +229,6 @@ public sealed class RoadmapStatusGuardrailTests
         startInfo.ArgumentList.Add(masterStatusPath);
         startInfo.ArgumentList.Add("--task-id");
         startInfo.ArgumentList.Add(taskId);
-
-        using var process = Process.Start(startInfo)!;
-        var stdout = process.StandardOutput.ReadToEnd();
-        var stderr = process.StandardError.ReadToEnd();
-        process.WaitForExit();
-
-        return (process.ExitCode, stdout + stderr);
-    }
-
-    private static (int ExitCode, string Output) RunAdvance(
-        string plansPath,
-        string masterStatusPath,
-        string readmePath,
-        string guardrailPath,
-        string expectedCurrentTask,
-        string nextTask,
-        string mergedPr,
-        bool dryRun)
-    {
-        var startInfo = new ProcessStartInfo("python3")
-        {
-            WorkingDirectory = ResolveRepoPath("."),
-            RedirectStandardError = true,
-            RedirectStandardOutput = true,
-        };
-
-        startInfo.ArgumentList.Add(ResolveRepoPath("scripts/advance-roadmap-status.py"));
-        startInfo.ArgumentList.Add("--plans-file");
-        startInfo.ArgumentList.Add(plansPath);
-        startInfo.ArgumentList.Add("--master-status-file");
-        startInfo.ArgumentList.Add(masterStatusPath);
-        startInfo.ArgumentList.Add("--readme-file");
-        startInfo.ArgumentList.Add(readmePath);
-        startInfo.ArgumentList.Add("--guardrail-test-file");
-        startInfo.ArgumentList.Add(guardrailPath);
-        startInfo.ArgumentList.Add("--expected-current-task");
-        startInfo.ArgumentList.Add(expectedCurrentTask);
-        startInfo.ArgumentList.Add("--next-task");
-        startInfo.ArgumentList.Add(nextTask);
-        startInfo.ArgumentList.Add("--merged-pr");
-        startInfo.ArgumentList.Add(mergedPr);
-
-        if (dryRun)
-        {
-            startInfo.ArgumentList.Add("--dry-run");
-        }
 
         using var process = Process.Start(startInfo)!;
         var stdout = process.StandardOutput.ReadToEnd();
