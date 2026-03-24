@@ -67,7 +67,6 @@
   - Keep hardening scoped to server-owned validation, conflict handling, and invariant enforcement for the already-shipped Phase 1 services.
   - Bind idempotent replay to original mutation intent for economy transactions, contract job transitions, and contract job applications so mismatched semantics cannot silently replay.
   - Add exploit-resistance integration tests proving payload drift, target drift, route/resource mismatch, and unknown-reference writes are rejected with no partial writes.
-  - Add validated roadmap closeout tooling to advance task/phase status surfaces in lockstep via branch + PR workflow (no direct main mutation automation).
 - **Allowed files:**
   - `PLANS.md`
   - `README.md`
