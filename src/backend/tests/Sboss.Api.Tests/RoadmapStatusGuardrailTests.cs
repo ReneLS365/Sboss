@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
 using System.Text.RegularExpressions;
@@ -9,7 +10,9 @@ public sealed class RoadmapStatusGuardrailTests
     private const string ActiveTaskId = "P1I-HARDENING-AND-INVARIANTS";
     private static readonly Regex MasterCurrentTaskRegex = new("^- Current task:\\s+\\*\\*(?<step>\\d+[A-Z])\\s+[—-]\\s+(?<title>.+)\\*\\*$", RegexOptions.Multiline);
     private static readonly Regex MasterNextTaskRegex = new("^- Next task:\\s+\\*\\*(?<step>\\d+[A-Z])\\s+[—-]\\s+(?<title>.+)\\*\\*$", RegexOptions.Multiline);
-    private static readonly Regex PlanInProgressTaskIdRegex = new("## Task Record — (?<taskId>.+?)\\r?\\n(?:(?!\\r?\\n## Task Record — )[\\s\\S])*?- \\*\\*Status:\\*\\* IN_PROGRESS", RegexOptions.Singleline);
+    private static readonly Regex PlanTaskBlockRegex = new("^## Task Record — (?<header>.+?)\\r?\\n(?<body>.*?)(?=^## Task Record — |\\z)", RegexOptions.Multiline | RegexOptions.Singleline);
+    private static readonly Regex PlanTaskIdRegex = new("^- \\*\\*Task ID:\\*\\*\\s*(?<taskId>.+)$", RegexOptions.Multiline);
+    private static readonly Regex PlanTaskStatusRegex = new("^- \\*\\*Status:\\*\\*\\s*(?<status>[A-Z_]+)$", RegexOptions.Multiline);
 
     [Fact]
     public void ValidationScript_PassesForCurrentRepoState()
@@ -522,8 +525,22 @@ public sealed class RoadmapStatusGuardrailTests
         var plans = File.ReadAllText(ResolveRepoPath("PLANS.md"));
         var master = File.ReadAllText(ResolveRepoPath("docs/MASTER_STATUS.md"));
 
-        var inProgressTask = PlanInProgressTaskIdRegex.Match(plans);
-        Assert.True(inProgressTask.Success, "Expected exactly one IN_PROGRESS task in PLANS.md for test state derivation.");
+        var inProgressTaskIds = new List<string>();
+        foreach (Match taskBlock in PlanTaskBlockRegex.Matches(plans))
+        {
+            var body = taskBlock.Groups["body"].Value;
+            var statusMatch = PlanTaskStatusRegex.Match(body);
+            if (!statusMatch.Success || !string.Equals(statusMatch.Groups["status"].Value.Trim(), "IN_PROGRESS", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var taskIdMatch = PlanTaskIdRegex.Match(body);
+            Assert.True(taskIdMatch.Success, "IN_PROGRESS task block is missing Task ID in PLANS.md.");
+            inProgressTaskIds.Add(taskIdMatch.Groups["taskId"].Value.Trim());
+        }
+
+        Assert.Single(inProgressTaskIds);
 
         var current = MasterCurrentTaskRegex.Match(master);
         var next = MasterNextTaskRegex.Match(master);
@@ -531,7 +548,7 @@ public sealed class RoadmapStatusGuardrailTests
         Assert.True(next.Success, "Unable to parse next task from docs/MASTER_STATUS.md.");
 
         return (
-            CurrentTaskId: inProgressTask.Groups["taskId"].Value.Trim(),
+            CurrentTaskId: inProgressTaskIds[0],
             CurrentStep: current.Groups["step"].Value.Trim(),
             NextStep: next.Groups["step"].Value.Trim());
     }
