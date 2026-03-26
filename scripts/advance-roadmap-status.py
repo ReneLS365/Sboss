@@ -146,18 +146,30 @@ def main():
     readme_path = Path(args.readme_file)
     guardrail_path = Path(args.guardrail_test_file)
 
-    plans_text = plans_path.read_text(encoding='utf-8')
     master_text = master_path.read_text(encoding='utf-8')
     readme_text = readme_path.read_text(encoding='utf-8')
     guardrail_text = guardrail_path.read_text(encoding='utf-8')
 
-    plan_tasks = parse_plan_tasks(plans_text)
-    require(plan_tasks, 'No task records found in PLANS.md.')
-    in_progress = [t for t in plan_tasks if t.status == 'IN_PROGRESS']
-    require(len(in_progress) == 1, 'Exactly one task must be marked IN_PROGRESS in PLANS.md.')
-    active_task = in_progress[0]
-    require(active_task.task_id == args.expected_current_task,
-            f"Expected current task '{args.expected_current_task}', but PLANS.md has '{active_task.task_id}' IN_PROGRESS.")
+    plans_available = plans_path.exists()
+    plans_text = plans_path.read_text(encoding='utf-8') if plans_available else ''
+    updated_plans = plans_text
+
+    if plans_available:
+        plan_tasks = parse_plan_tasks(plans_text)
+        require(plan_tasks, 'No task records found in PLANS.md.')
+        in_progress = [t for t in plan_tasks if t.status == 'IN_PROGRESS']
+        require(len(in_progress) == 1, 'Exactly one task must be marked IN_PROGRESS in PLANS.md.')
+        active_task = in_progress[0]
+        require(active_task.task_id == args.expected_current_task,
+                f"Expected current task '{args.expected_current_task}', but PLANS.md has '{active_task.task_id}' IN_PROGRESS.")
+    else:
+        active_task = PlanTask(
+            task_id=args.expected_current_task,
+            title=args.expected_current_task,
+            status='IN_PROGRESS',
+            pr='',
+            block_start=0,
+            block_end=0)
 
     current_match = CURRENT_TASK_RE.search(master_text)
     next_match = NEXT_TASK_RE.search(master_text)
@@ -182,32 +194,32 @@ def main():
     require(next_match.group('step').upper() == expected_next_step,
             'docs/MASTER_STATUS.md Next task does not match direct roadmap successor.')
 
-    # Update PLANS: close active task
-    updated_plans = plans_text
-    active_block = plans_text[active_task.block_start:active_task.block_end]
-    closed_block = update_plan_block(active_block, status='DONE', pr=f"{args.merged_pr} (merged)")
-    updated_plans = updated_plans[:active_task.block_start] + closed_block + updated_plans[active_task.block_end:]
-
-    # Re-parse after replacement
-    updated_tasks = parse_plan_tasks(updated_plans)
     next_task_id = normalize_task_id(expected_next_step, expected_next_title)
-    next_task = next((t for t in updated_tasks if t.task_id == next_task_id), None)
+    if plans_available:
+        # Update PLANS: close active task
+        active_block = plans_text[active_task.block_start:active_task.block_end]
+        closed_block = update_plan_block(active_block, status='DONE', pr=f"{args.merged_pr} (merged)")
+        updated_plans = updated_plans[:active_task.block_start] + closed_block + updated_plans[active_task.block_end:]
 
-    if next_task is not None:
-        next_block = updated_plans[next_task.block_start:next_task.block_end]
-        next_updated = update_plan_block(next_block, status='IN_PROGRESS', pr='Draft PR pending')
-        updated_plans = updated_plans[:next_task.block_start] + next_updated + updated_plans[next_task.block_end:]
-    else:
-        phase_number, _ = split_step(expected_next_step)
-        phase_title_match = re.search(rf"^## Phase {phase_number} [—-] (?P<title>.+)$", master_text, re.MULTILINE)
-        require(phase_title_match is not None, f"Unable to find title for Phase {phase_number} in docs/MASTER_STATUS.md.")
-        new_record = build_task_record(expected_next_step, expected_next_title, phase_title_match.group('title').strip())
-        anchor = re.search(r"\n---\n\s*\n", updated_plans)
-        if anchor:
-            insert_at = anchor.end()
-            updated_plans = updated_plans[:insert_at] + "\n" + new_record + updated_plans[insert_at:]
+        # Re-parse after replacement
+        updated_tasks = parse_plan_tasks(updated_plans)
+        next_task = next((t for t in updated_tasks if t.task_id == next_task_id), None)
+
+        if next_task is not None:
+            next_block = updated_plans[next_task.block_start:next_task.block_end]
+            next_updated = update_plan_block(next_block, status='IN_PROGRESS', pr='Draft PR pending')
+            updated_plans = updated_plans[:next_task.block_start] + next_updated + updated_plans[next_task.block_end:]
         else:
-            updated_plans = updated_plans.rstrip() + "\n\n---\n\n" + new_record
+            phase_number, _ = split_step(expected_next_step)
+            phase_title_match = re.search(rf"^## Phase {phase_number} [—-] (?P<title>.+)$", master_text, re.MULTILINE)
+            require(phase_title_match is not None, f"Unable to find title for Phase {phase_number} in docs/MASTER_STATUS.md.")
+            new_record = build_task_record(expected_next_step, expected_next_title, phase_title_match.group('title').strip())
+            anchor = re.search(r"\n---\n\s*\n", updated_plans)
+            if anchor:
+                insert_at = anchor.end()
+                updated_plans = updated_plans[:insert_at] + "\n" + new_record + updated_plans[insert_at:]
+            else:
+                updated_plans = updated_plans.rstrip() + "\n\n---\n\n" + new_record
 
     # Update MASTER_STATUS header
     updated_master = master_text
@@ -253,14 +265,15 @@ def main():
 
         updated_master, _ = re.subn(rf"^- \[ \]\s+Phase {current_phase_num}(\s+[—-]\s+.+)$", rf"- [x] Phase {current_phase_num}\1", updated_master, count=1, flags=re.MULTILINE)
 
-        plans_current_phase = PLANS_CURRENT_PHASE_RE.search(updated_plans)
-        require(plans_current_phase is not None, "PLANS.md is missing '**Current_phase:**' metadata.")
-        updated_plans, p1 = PLANS_CURRENT_PHASE_RE.subn(
-            f"- **Current_phase:** {next_phase_num} ({next_phase_title})",
-            updated_plans,
-            count=1,
-        )
-        require(p1 == 1, "Unable to update PLANS.md current-phase metadata for cross-phase advancement.")
+        if plans_available:
+            plans_current_phase = PLANS_CURRENT_PHASE_RE.search(updated_plans)
+            require(plans_current_phase is not None, "PLANS.md is missing '**Current_phase:**' metadata.")
+            updated_plans, p1 = PLANS_CURRENT_PHASE_RE.subn(
+                f"- **Current_phase:** {next_phase_num} ({next_phase_title})",
+                updated_plans,
+                count=1,
+            )
+            require(p1 == 1, "Unable to update PLANS.md current-phase metadata for cross-phase advancement.")
 
     # Update README snapshot lines
     updated_readme = readme_text
@@ -278,7 +291,8 @@ def main():
         print(f"Roadmap advancement check passed: {active_task.task_id} -> {next_task_id} ({args.merged_pr}).")
         return
 
-    plans_path.write_text(updated_plans, encoding='utf-8')
+    if plans_available:
+        plans_path.write_text(updated_plans, encoding='utf-8')
     master_path.write_text(updated_master, encoding='utf-8')
     readme_path.write_text(updated_readme, encoding='utf-8')
     guardrail_path.write_text(updated_guardrail, encoding='utf-8')
