@@ -7,7 +7,7 @@ namespace Sboss.Api.Tests;
 
 public sealed class RoadmapStatusGuardrailTests
 {
-    private const string ActiveTaskId = "P1I-HARDENING-AND-INVARIANTS";
+    private const string ActiveTaskId = "P2A-COMMAND-VALIDATION-QUEUE";
     private static readonly Regex MasterCurrentTaskRegex = new("^- Current task:\\s+\\*\\*(?<step>\\d+[A-Z])\\s+[—-]\\s+(?<title>.+)\\*\\*$", RegexOptions.Multiline);
     private static readonly Regex MasterNextTaskRegex = new("^- Next task:\\s+\\*\\*(?<step>\\d+[A-Z])\\s+[—-]\\s+(?<title>.+)\\*\\*$", RegexOptions.Multiline);
     private static readonly Regex PlanTaskBlockRegex = new("^## Task Record — (?<header>.+?)\\r?\\n(?<body>.*?)(?=^## Task Record — |\\z)", RegexOptions.Multiline | RegexOptions.Singleline);
@@ -55,7 +55,7 @@ public sealed class RoadmapStatusGuardrailTests
     public void ValidationScript_FailsWhenNextTaskSkipsAhead()
     {
         var masterStatus = File.ReadAllText(ResolveRepoPath("docs/MASTER_STATUS.md"));
-        masterStatus = masterStatus.Replace("- Next task: **2A — Tick model + schema**", "- Next task: **2B — Tick processor skeleton**", StringComparison.Ordinal);
+        masterStatus = masterStatus.Replace("- Next task: **2B — Unity Isometrisk Shell**", "- Next task: **2C — Client-Side Prediction**", StringComparison.Ordinal);
 
         var result = RunValidation(ResolveRepoPath("PLANS.md"), WriteTempFile(masterStatus), taskId: ActiveTaskId);
 

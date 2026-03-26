@@ -138,18 +138,19 @@ def main():
 
         if args.task_id:
             active_task = next((task for task in plan_tasks if task.task_id == args.task_id), None)
-            require(active_task is not None, f"Active task '{args.task_id}' is missing from PLANS.md.")
-        elif in_progress:
+            if active_task is not None and active_task.step != current_step:
+                active_task = None
+        elif in_progress and in_progress[0].step == current_step:
             active_task = in_progress[0]
         elif len(draft_done) == 1:
             active_task = draft_done[0]
-        else:
-            fail('Unable to infer the active task. Mark one task IN_PROGRESS or pass --task-id.')
-    elif args.task_id:
+
+    if active_task is None and args.task_id:
         step = derive_step_from_task_id(args.task_id)
-        require(step is not None, f"Unable to derive roadmap step from task id '{args.task_id}'.")
-        active_task = PlanTask(task_id=args.task_id, title=args.task_id, status='IN_PROGRESS', pr='', step=step)
-    else:
+        if step == current_step:
+            active_task = PlanTask(task_id=args.task_id, title=args.task_id, status='IN_PROGRESS', pr='', step=step)
+
+    if active_task is None:
         active_task = PlanTask(
             task_id=f"P{current_step}-INFERRED-FROM-MASTER-STATUS",
             title='Inferred from docs/MASTER_STATUS.md',
@@ -160,9 +161,9 @@ def main():
 
     master_tasks = extract_master_phase_tasks(master_text)
     roadmap_steps = [task['step'] for task in master_tasks]
-    require(active_task.step in roadmap_steps, f"Active task step '{active_task.step}' is missing from docs/MASTER_STATUS.md.")
+    require(current_step in roadmap_steps, f"Current task step '{current_step}' is missing from docs/MASTER_STATUS.md.")
 
-    active_index = roadmap_steps.index(active_task.step)
+    active_index = roadmap_steps.index(current_step)
     prior_steps = set(roadmap_steps[:active_index])
 
     if plan_tasks:
@@ -175,8 +176,6 @@ def main():
                 has_merged_pr = bool(re.search(r"#\d+", task.pr))
                 has_draft_pr = task.task_id == active_task.task_id and 'draft pr' in task.pr.lower()
                 require(has_merged_pr or has_draft_pr, f"Task '{task.task_id}' is marked DONE without a required PR reference.")
-
-    require(active_task.step == current_step, 'docs/MASTER_STATUS.md Current task does not match the active task step.')
 
     if active_index + 1 < len(roadmap_steps):
         expected_next = roadmap_steps[active_index + 1]

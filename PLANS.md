@@ -1,7 +1,7 @@
 # Sboss Phase Plan
 
 ## Current Phase
-- **Current_phase:** 1 (Authoritative Core Domain)
+- **Current_phase:** 2 (Core Gameplay Validation)
 - **Execution_mode:** Follow `docs/MASTER_STATUS.md` and complete roadmap tasks in sequence.
 - **Architecture_lock:** Server-authoritative backend, Unity dumb client.
 - **Workflow_lock:** Plan-first, scoped changes, update plan as work progresses.
@@ -58,7 +58,7 @@
 - **Task ID:** P1I-HARDENING-AND-INVARIANTS
 - **Title:** Phase 1I hardening and invariants
 - **Phase:** Phase 1 — Authoritative Core Domain
-- **Status:** IN_PROGRESS
+- **Status:** BLOCKED
 - **Branch:** work
 - **PR:** Draft PR pending
 - **Scope:**
@@ -91,7 +91,42 @@
 - **Follow-up review actions (2026-03-24):**
   - Enforce applicant intent binding on the submit unique-violation replay fallback path so concurrent same-key/different-applicant submit races cannot replay another applicant's mutation.
   - Constrain roadmap guardrail task-state parsing to a single `## Task Record` block so `IN_PROGRESS` derivation cannot bind to an earlier `DONE` record.
-- **Last updated:** 2026-03-24
+- **Last updated:** 2026-03-26
+
+---
+
+## Task Record — P2A-COMMAND-VALIDATION-QUEUE
+- **Task ID:** P2A-COMMAND-VALIDATION-QUEUE
+- **Title:** Phase 2A command validation queue
+- **Phase:** Phase 2 — Core Gameplay Validation
+- **Status:** IN_PROGRESS
+- **Branch:** work
+- **PR:** Draft PR pending
+- **Scope:**
+  - Implement minimal authoritative command intake for discrete scaffold actions.
+  - Keep backend server-authoritative.
+  - No Unity prediction, scoring, or meta-loop work in this task.
+- **Allowed files:**
+  - `PLANS.md`
+  - `README.md`
+  - `docs/MASTER_STATUS.md`
+  - `scripts/**`
+  - `src/backend/tests/**`
+  - `src/backend/Sboss.Api/**`
+  - `src/backend/Sboss.Application/**`
+  - `src/backend/Sboss.Contracts/**`
+  - `src/backend/Sboss.Domain/**`
+  - `src/backend/Sboss.Infrastructure/**`
+- **Non-goals:**
+  - No Phase 3+ roadmap work.
+  - No Unity client prediction/runtime logic.
+  - No scoring-engine or company meta-loop implementation.
+- **Acceptance criteria:**
+  - `docs/MASTER_STATUS.md`, `README.md`, and `PLANS.md` agree that 2A is active and 2B is next.
+  - Roadmap validation tooling passes with current repo state.
+  - Validator CLI compatibility with `--plans-file` and `--task-id` is preserved.
+- **Blockers:** None recorded.
+- **Last updated:** 2026-03-26
 
 ---
 
