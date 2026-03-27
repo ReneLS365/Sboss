@@ -45,6 +45,21 @@ public sealed class RoadmapStatusGuardrailTests
     }
 
     [Fact]
+    public void ValidationScript_FailsWhenCurrentPhaseDoesNotMatchCurrentTask()
+    {
+        var masterStatus = File.ReadAllText(ResolveRepoPath("docs/MASTER_STATUS.md"));
+        masterStatus = masterStatus.Replace(
+            "- Current phase: **Phase 2 — Core Gameplay Validation**",
+            "- Current phase: **Phase 5 — Release Prep**",
+            StringComparison.Ordinal);
+
+        var result = RunValidation(WriteTempFile(masterStatus));
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains("does not match current task step '2A'", result.Output, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void PostgresFixture_RequiresExplicitIsolatedTestDatabase()
     {
         var original = Environment.GetEnvironmentVariable("SBOSS_TEST_DATABASE");
