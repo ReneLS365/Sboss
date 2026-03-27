@@ -5,10 +5,10 @@ This document locks the repository execution model before Phase 1A begins.
 
 ## Control Rules
  - `docs/MASTER_STATUS.md` is the only roadmap and in-repo progress source.
- - `PLANS.md` remains the execution ledger until all guardrail tooling migrates; roadmap scripts must treat a missing `PLANS.md` path as migration-mode (no traceback/file-not-found crash).
  - Work must remain inside the active phase and task scope.
  - Draft pull requests only until human review approves the change set.
  - Server-authoritative architecture is mandatory; no client-owned truth may be introduced.
+ - Do not create manual status mirrors; if a status surface is manual and redundant with `docs/MASTER_STATUS.md`, it should not exist.
 
 ## Required Delivery Sequence
 1. Confirm the requested work is inside the current phase in `docs/MASTER_STATUS.md`.
@@ -30,13 +30,7 @@ This document locks the repository execution model before Phase 1A begins.
 - Architecture gate: changes must preserve server-authoritative ownership.
 - Documentation gate: README and templates must point contributors to the locked control documents when relevant.
 
-## PLANS Migration Inventory (active consumers)
-- `scripts/validate-roadmap-status.py` (`--plans-file`, `--task-id`) remains backward-compatible for existing CI/test callers.
-- `scripts/advance-roadmap-status.py` still accepts `--plans-file`; in migration-mode, missing plan files are tolerated for dry-run and validation paths.
-- `src/backend/tests/Sboss.Api.Tests/RoadmapStatusGuardrailTests.cs` currently exercises both with-plan and missing-plan fixture paths.
-
 ## Forbidden Drift
  - Do not treat pull requests, issues, or task documents as roadmap replacements.
  - Avoid hidden sources of roadmap/progress status outside `docs/MASTER_STATUS.md`.
- - Do not remove backward-compatible roadmap validator flags (`--plans-file`, `--task-id`) until all known callers/tests are migrated.
  - Do not implement future-phase runtime logic under the cover of documentation or scaffolding work.
