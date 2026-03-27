@@ -9,25 +9,62 @@ on:
 jobs:
   build-test:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: sboss
-          POSTGRES_PASSWORD: sboss_dev_password
-          POSTGRES_DB: sboss_tests
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U sboss -d sboss_tests"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+    permissions:
+      contents: read
+      packages: read
     env:
       SBOSS_TEST_DATABASE: Host=localhost;Port=5432;Database=sboss_tests;Username=sboss;Password=sboss_dev_password
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull Postgres image (GHCR first, Docker Hub fallback)
+        run: |
+          set -euo pipefail
+          GHCR_IMAGE="ghcr.io/renels365/sboss-postgres:16"
+          FALLBACK_IMAGE="postgres:16"
+
+          if docker pull "$GHCR_IMAGE"; then
+            echo "POSTGRES_IMAGE=$GHCR_IMAGE" >> "$GITHUB_ENV"
+          else
+            echo "GHCR mirror not available yet; bootstrapping with Docker Hub image."
+            docker pull "$FALLBACK_IMAGE"
+            echo "POSTGRES_IMAGE=$FALLBACK_IMAGE" >> "$GITHUB_ENV"
+          fi
+
+      - name: Start Postgres container
+        run: |
+          set -euo pipefail
+          docker run -d \
+            --name sboss-postgres \
+            -e POSTGRES_USER=sboss \
+            -e POSTGRES_PASSWORD=sboss_dev_password \
+            -e POSTGRES_DB=sboss_tests \
+            -p 5432:5432 \
+            "$POSTGRES_IMAGE"
+
+      - name: Wait for Postgres readiness
+        run: |
+          set -euo pipefail
+          for attempt in {1..30}; do
+            if docker exec sboss-postgres pg_isready -U sboss -d sboss_tests >/dev/null 2>&1; then
+              echo "Postgres is ready."
+              exit 0
+            fi
+
+            sleep 2
+          done
+
+          echo "Postgres readiness check failed after 60 seconds."
+          docker logs sboss-postgres
+          exit 1
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
@@ -45,3 +82,11 @@ jobs:
 
       - name: Test
         run: dotnet test Sboss.sln --configuration Release -warnaserror --no-build
+
+      - name: Dump Postgres logs on failure
+        if: failure()
+        run: docker logs sboss-postgres
+
+      - name: Remove Postgres container
+        if: always()
+        run: docker rm -f sboss-postgres
