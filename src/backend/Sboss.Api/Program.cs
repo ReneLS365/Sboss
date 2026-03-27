@@ -50,6 +50,8 @@ app.MapPost("/api/v1/match-results", async (
     ILevelSeedRepository levelSeedRepository,
     IMatchResultRepository repository,
     ICommandValidationQueue commandValidationQueue,
+    IAuthoritativeYardCapacityProvider yardCapacityProvider,
+    IAuthoritativeComponentCapacityProvider componentCapacityProvider,
     IScoringEngine scoringEngine,
     IMatchResultValidationService validator,
     ConcurrentDictionary<Guid, SemaphoreSlim> locks,
@@ -88,6 +90,14 @@ app.MapPost("/api/v1/match-results", async (
         });
     }
 
+    if (request.PlacementIntents.Any(intent => intent is null))
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["placementIntents"] = new[] { "Placement intents cannot contain null entries." }
+        });
+    }
+
     if (request.PlacementIntents.Any(intent => intent.SeedId != request.LevelSeedId))
     {
         return Results.ValidationProblem(new Dictionary<string, string[]>
@@ -96,11 +106,28 @@ app.MapPost("/api/v1/match-results", async (
         });
     }
 
+    var remainingCapacityForSequence = await yardCapacityProvider.GetRemainingCapacityAsync(request.LevelSeedId, cancellationToken);
     var validationResults = new List<CommandValidationResult>(request.PlacementIntents.Count);
     foreach (var intent in request.PlacementIntents)
     {
         var rawIntentJson = JsonSerializer.Serialize(intent);
         var validation = await commandValidationQueue.ValidatePlaceComponentIntentAsync(rawIntentJson, cancellationToken);
+
+        if (validation.Accepted && remainingCapacityForSequence.HasValue)
+        {
+            var requiredCapacity = await componentCapacityProvider.GetRequiredCapacityAsync(intent.ComponentId, cancellationToken);
+            if (!requiredCapacity.HasValue || requiredCapacity.Value > remainingCapacityForSequence.Value)
+            {
+                validation = CommandValidationResult.Reject(
+                    "yard_capacity_exceeded",
+                    "Required capacity exceeds remaining yard capacity for this placement sequence.");
+            }
+            else
+            {
+                remainingCapacityForSequence -= requiredCapacity.Value;
+            }
+        }
+
         validationResults.Add(validation);
     }
 

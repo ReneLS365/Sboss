@@ -1,5 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
+using Microsoft.AspNetCore.Mvc;
 using Sboss.Contracts.Commands;
 using Sboss.Contracts.MatchResults;
 
@@ -115,6 +117,50 @@ public sealed class MatchResultsContractTests
         Assert.Equal(firstPayload.ComboMax, secondPayload.ComboMax);
         Assert.Equal(firstPayload.StabilityPercent, secondPayload.StabilityPercent);
         Assert.Equal(firstPayload.Penalties, secondPayload.Penalties);
+    }
+
+    [Fact]
+    public async Task PostMatchResult_WithNullPlacementIntentEntry_ReturnsBadRequest()
+    {
+        var client = _factory.CreateClient();
+        var payload = """
+        {
+          "accountId":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+          "seasonId":"cccccccc-cccc-cccc-cccc-cccccccccccc",
+          "levelSeedId":"dddddddd-dddd-dddd-dddd-dddddddddddd",
+          "placementIntents":[null]
+        }
+        """;
+
+        using var content = new StringContent(payload, Encoding.UTF8, "application/json");
+        var response = await client.PostAsync("/api/v1/match-results", content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        Assert.NotNull(problem);
+        Assert.True(problem!.Errors.ContainsKey("placementIntents"));
+    }
+
+    [Fact]
+    public async Task PostMatchResult_RejectsPlacementsThatExceedSequenceCapacity()
+    {
+        var client = _factory.CreateClient();
+        var seedId = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
+        var request = new PostMatchResultRequest(
+            Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+            Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc"),
+            seedId,
+            CreatePlacementIntents(seedId, "scaffold_blue_frame", "scaffold_blue_frame", "scaffold_blue_frame"),
+            null);
+
+        var response = await client.PostAsJsonAsync("/api/v1/match-results", request);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var result = await response.Content.ReadFromJsonAsync<PostMatchResultResponse>();
+        Assert.NotNull(result);
+        Assert.Equal(2, result!.ComboMax);
+        Assert.Equal(1, result.Penalties);
+        Assert.Equal(67, result.StabilityPercent);
     }
 
     private static IReadOnlyList<PlaceComponentIntent> CreatePlacementIntents(Guid seedId, params string[] componentIds)
