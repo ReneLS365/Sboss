@@ -12,9 +12,11 @@ namespace SbossClient.Client.Networking
     public sealed class PlacementRequestDispatcher : MonoBehaviour
     {
         [SerializeField] private float simulatedTransportDelaySeconds = 0.2f;
+        [SerializeField] private bool simulateRejections;
+        [SerializeField] [Range(0f, 1f)] private float simulatedRejectionRate = 0.15f;
 
-        public event Action? RequestBegan;
-        public event Action? RequestCompleted;
+        public event Action<PlacementRequestPayload>? RequestBegan;
+        public event Action<PlacementAuthoritativeResult>? RequestCompleted;
 
         public void DispatchPlacementRequest(PlacementRequestPayload payload)
         {
@@ -23,10 +25,41 @@ namespace SbossClient.Client.Networking
 
         private IEnumerator SimulateSend(PlacementRequestPayload payload)
         {
-            _ = payload;
-            RequestBegan?.Invoke();
+            RequestBegan?.Invoke(payload);
             yield return new WaitForSeconds(simulatedTransportDelaySeconds);
-            RequestCompleted?.Invoke();
+
+            var accepted = !simulateRejections || UnityEngine.Random.value >= simulatedRejectionRate;
+            var result = accepted
+                ? PlacementAuthoritativeResult.Accepted(payload.ClientRequestId)
+                : PlacementAuthoritativeResult.Rejected(payload.ClientRequestId, "server_rejected", "Placement rejected by authoritative validation.");
+
+            RequestCompleted?.Invoke(result);
+        }
+    }
+
+    public readonly struct PlacementAuthoritativeResult
+    {
+        public PlacementAuthoritativeResult(string clientRequestId, bool accepted, string code, string message)
+        {
+            ClientRequestId = clientRequestId;
+            Accepted = accepted;
+            Code = code;
+            Message = message;
+        }
+
+        public string ClientRequestId { get; }
+        public bool Accepted { get; }
+        public string Code { get; }
+        public string Message { get; }
+
+        public static PlacementAuthoritativeResult Accepted(string clientRequestId)
+        {
+            return new PlacementAuthoritativeResult(clientRequestId, true, "accepted", "Placement accepted.");
+        }
+
+        public static PlacementAuthoritativeResult Rejected(string clientRequestId, string code, string message)
+        {
+            return new PlacementAuthoritativeResult(clientRequestId, false, code, message);
         }
     }
 }
