@@ -19,8 +19,8 @@ public sealed class RoadmapStatusGuardrailTests
     {
         var masterStatus = File.ReadAllText(ResolveRepoPath("docs/MASTER_STATUS.md"));
         masterStatus = masterStatus.Replace(
-            "- Next task: **2D — Scoring Engine**",
             "- Next task: **2E — Scaffold Assembly Rules**",
+            "- Next task: **2F — Vertical Slice Test**",
             StringComparison.Ordinal);
 
         var result = RunValidation(WriteTempFile(masterStatus));
@@ -34,14 +34,14 @@ public sealed class RoadmapStatusGuardrailTests
     {
         var masterStatus = File.ReadAllText(ResolveRepoPath("docs/MASTER_STATUS.md"));
         masterStatus = masterStatus.Replace(
-            "- [ ] 2C Client-Side Prediction: Tillad Unity at placere dele øjeblikkeligt lokalt, mens server godkender asynkront. Rollback ved server-afvisning.",
-            "- [ ] 2Z Client-Side Prediction: Tillad Unity at placere dele øjeblikkeligt lokalt, mens server godkender asynkront. Rollback ved server-afvisning.",
+            "- [ ] 2D Scoring Engine: Server-autoritativ beregning af stabilitet, combo-multiplier og tid.",
+            "- [ ] 2Z Scoring Engine: Server-autoritativ beregning af stabilitet, combo-multiplier og tid.",
             StringComparison.Ordinal);
 
         var result = RunValidation(WriteTempFile(masterStatus));
 
         Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("Current task step '2C' is missing", result.Output, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Current task step '2D' is missing", result.Output, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
