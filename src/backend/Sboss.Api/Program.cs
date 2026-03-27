@@ -1,5 +1,7 @@
 using System.Collections.Concurrent;
+using System.Text.Json;
 using Sboss.Api.Validation;
+using Sboss.Contracts.Commands;
 using Sboss.Contracts.Economy;
 using Sboss.Contracts.MatchResults;
 using Sboss.Contracts.LevelSeeds;
@@ -47,6 +49,8 @@ app.MapPost("/api/v1/match-results", async (
     ISeasonRepository seasonRepository,
     ILevelSeedRepository levelSeedRepository,
     IMatchResultRepository repository,
+    ICommandValidationQueue commandValidationQueue,
+    IScoringEngine scoringEngine,
     IMatchResultValidationService validator,
     ConcurrentDictionary<Guid, SemaphoreSlim> locks,
     CancellationToken cancellationToken) =>
@@ -76,6 +80,32 @@ app.MapPost("/api/v1/match-results", async (
         return Results.ValidationProblem(referenceErrors);
     }
 
+    if (request.PlacementIntents is null || request.PlacementIntents.Count == 0)
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["placementIntents"] = new[] { "At least one placement intent is required." }
+        });
+    }
+
+    if (request.PlacementIntents.Any(intent => intent.SeedId != request.LevelSeedId))
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["placementIntents"] = new[] { "All placement intents must target the requested level seed." }
+        });
+    }
+
+    var validationResults = new List<CommandValidationResult>(request.PlacementIntents.Count);
+    foreach (var intent in request.PlacementIntents)
+    {
+        var rawIntentJson = JsonSerializer.Serialize(intent);
+        var validation = await commandValidationQueue.ValidatePlaceComponentIntentAsync(rawIntentJson, cancellationToken);
+        validationResults.Add(validation);
+    }
+
+    var scoring = scoringEngine.Compute(levelSeed!, validationResults.Select(result => result.Accepted).ToArray());
+
     MatchResult matchResult;
 
     try
@@ -84,10 +114,10 @@ app.MapPost("/api/v1/match-results", async (
             request.AccountId,
             request.SeasonId,
             request.LevelSeedId,
-            request.Score,
-            request.ClearTimeMs,
-            request.ComboMax,
-            request.Penalties,
+            scoring.Score,
+            scoring.ClearTimeMs,
+            scoring.ComboMax,
+            scoring.Penalties,
             DateTimeOffset.UtcNow);
     }
     catch (ArgumentException ex)
@@ -105,7 +135,17 @@ app.MapPost("/api/v1/match-results", async (
         var validationStatus = await validator.ValidateAsync(matchResult, cancellationToken);
         matchResult.ApplyValidation(validationStatus, DateTimeOffset.UtcNow);
         var saved = await repository.SaveAsync(matchResult, cancellationToken);
-        return Results.Created($"/api/v1/match-results/{saved.MatchResultId}", MapMatchResult(saved));
+        return Results.Created(
+            $"/api/v1/match-results/{saved.MatchResultId}",
+            new PostMatchResultResponse(
+                saved.MatchResultId,
+                saved.Score,
+                saved.ComboMax,
+                scoring.StabilityPercent,
+                saved.Penalties,
+                saved.ValidationStatus.ToString().ToLowerInvariant(),
+                saved.CreatedAt,
+                saved.Version));
     }
     finally
     {
@@ -293,9 +333,6 @@ static CurrentSeasonResponse MapSeason(Season season) =>
 
 static LevelSeedResponse MapLevelSeed(LevelSeed seed) =>
     new(seed.LevelSeedId, seed.SeedValue, seed.Biome, seed.Template, seed.Objective, seed.ModifiersJson, seed.ParTimeMs, seed.GoldTimeMs, seed.Version);
-
-static PostMatchResultResponse MapMatchResult(MatchResult matchResult) =>
-    new(matchResult.MatchResultId, matchResult.ValidationStatus.ToString().ToLowerInvariant(), matchResult.CreatedAt, matchResult.Version);
 
 static PostEconomyTransactionResponse MapEconomyTransaction(EconomyTransactionResult result) =>
     new(
