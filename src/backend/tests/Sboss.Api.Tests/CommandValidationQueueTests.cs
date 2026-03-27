@@ -107,20 +107,43 @@ public sealed class CommandValidationQueueTests
     }
 
     [Fact]
-    public async Task ValidatePlaceComponentIntent_IgnoresCallerSuppliedCapacityFieldsAndUsesAuthoritativeBackendData()
+    public async Task ValidatePlaceComponentIntent_RejectsNonDeserializableIntentJson()
+    {
+        var queue = CreateQueue();
+
+        var result = await queue.ValidatePlaceComponentIntentAsync(
+            """
+            {"SeedId":"dddddddd-dddd-dddd-dddd-dddddddddddd","Timestamp":"2026-03-27T00:00:00Z"}
+            """,
+            CancellationToken.None);
+
+        Assert.False(result.Accepted);
+        Assert.Equal("malformed_intent", result.Code);
+    }
+
+    [Fact]
+    public async Task ValidatePlaceComponentIntent_UsesAuthoritativeBackendDataRegardlessOfTimestampValue()
     {
         var queue = CreateQueue();
         _yardCapacityProvider.CapacityBySeedId[KnownSeedId] = 1;
         _componentCapacityProvider.CapacityByComponentId["scaffold_red_diagonal"] = 5;
 
-        var result = await queue.ValidatePlaceComponentIntentAsync(
+        var oldTimestampResult = await queue.ValidatePlaceComponentIntentAsync(
             $$"""
-            {"SeedId":"{{KnownSeedId}}","Timestamp":"2026-03-27T00:00:00Z","ComponentId":"scaffold_red_diagonal","RemainingCapacity":999,"RequiredCapacity":1}
+            {"SeedId":"{{KnownSeedId}}","Timestamp":"2020-01-01T00:00:00Z","ComponentId":"scaffold_red_diagonal"}
             """,
             CancellationToken.None);
 
-        Assert.False(result.Accepted);
-        Assert.Equal("yard_capacity_exceeded", result.Code);
+        var futureTimestampResult = await queue.ValidatePlaceComponentIntentAsync(
+            $$"""
+            {"SeedId":"{{KnownSeedId}}","Timestamp":"2036-01-01T00:00:00Z","ComponentId":"scaffold_red_diagonal"}
+            """,
+            CancellationToken.None);
+
+        Assert.False(oldTimestampResult.Accepted);
+        Assert.False(futureTimestampResult.Accepted);
+        Assert.Equal("yard_capacity_exceeded", oldTimestampResult.Code);
+        Assert.Equal("yard_capacity_exceeded", futureTimestampResult.Code);
     }
 
     private ICommandValidationQueue CreateQueue()

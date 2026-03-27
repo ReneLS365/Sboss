@@ -4,6 +4,12 @@ namespace Sboss.Infrastructure.Services;
 
 public sealed class AuthoritativeYardCapacityProvider : IAuthoritativeYardCapacityProvider
 {
+    private static readonly Dictionary<string, int> RemainingCapacityByTemplate =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["template_alpha"] = 5
+        };
+
     private readonly ILevelSeedRepository _levelSeedRepository;
 
     public AuthoritativeYardCapacityProvider(ILevelSeedRepository levelSeedRepository)
@@ -19,6 +25,11 @@ public sealed class AuthoritativeYardCapacityProvider : IAuthoritativeYardCapaci
             return null;
         }
 
-        return 5;
+        if (RemainingCapacityByTemplate.TryGetValue(seed.Template, out var remainingCapacity))
+        {
+            return remainingCapacity;
+        }
+
+        return null;
     }
 }

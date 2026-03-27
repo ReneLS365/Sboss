@@ -1,7 +1,5 @@
 using System.Collections.Concurrent;
-using System.Text.Json;
 using Sboss.Api.Validation;
-using Sboss.Contracts.Commands;
 using Sboss.Contracts.Economy;
 using Sboss.Contracts.MatchResults;
 using Sboss.Contracts.LevelSeeds;
@@ -41,15 +39,6 @@ app.MapGet("/api/v1/level-seeds/{seedId:guid}", async (Guid seedId, ILevelSeedRe
 {
     var seed = await repository.GetByIdAsync(seedId, cancellationToken);
     return seed is null ? Results.NotFound() : Results.Ok(MapLevelSeed(seed));
-});
-
-app.MapPost("/api/v1/commands/place-component/validate", async (
-    JsonElement rawIntent,
-    ICommandValidationQueue commandValidationQueue,
-    CancellationToken cancellationToken) =>
-{
-    var result = await commandValidationQueue.ValidatePlaceComponentIntentAsync(rawIntent.GetRawText(), cancellationToken);
-    return Results.Ok(result);
 });
 
 app.MapPost("/api/v1/match-results", async (
