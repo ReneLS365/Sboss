@@ -25,6 +25,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IEconomyTransactionService, EconomyTransactionService>();
         services.AddScoped<IContractJobTransitionService, ContractJobTransitionService>();
         services.AddScoped<IContractJobApplicationService, ContractJobApplicationService>();
+        services.AddScoped<ICommandValidationQueue, CommandValidationQueue>();
+        services.AddScoped<IYardCapacityValidator, YardCapacityValidator>();
+        services.AddScoped<IAuthoritativeYardCapacityProvider, AuthoritativeYardCapacityProvider>();
+        services.AddScoped<IAuthoritativeComponentCapacityProvider, AuthoritativeComponentCapacityProvider>();
         return services;
     }
 }
