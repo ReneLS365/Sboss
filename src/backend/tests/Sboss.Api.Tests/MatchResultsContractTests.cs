@@ -25,7 +25,7 @@ public sealed class MatchResultsContractTests
             Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
             Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc"),
             Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd"),
-            CreatePlacementIntents(Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd"), "frame-a", "deck-a", "diag-a"),
+            CreatePlacementIntents(Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd"), "scaffold_blue_frame", "scaffold_yellow_deck", "scaffold_red_diagonal"),
             null);
 
         var response = await client.PostAsJsonAsync("/api/v1/match-results", request);
@@ -48,7 +48,7 @@ public sealed class MatchResultsContractTests
             Guid.Empty,
             Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc"),
             Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd"),
-            CreatePlacementIntents(Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd"), "frame-a"),
+            CreatePlacementIntents(Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd"), "scaffold_blue_frame"),
             null);
 
         var response = await client.PostAsJsonAsync("/api/v1/match-results", request);
@@ -64,7 +64,7 @@ public sealed class MatchResultsContractTests
             Guid.Parse("99999999-9999-9999-9999-999999999999"),
             Guid.Parse("88888888-8888-8888-8888-888888888888"),
             Guid.Parse("77777777-7777-7777-7777-777777777777"),
-            CreatePlacementIntents(Guid.Parse("77777777-7777-7777-7777-777777777777"), "frame-a"),
+            CreatePlacementIntents(Guid.Parse("77777777-7777-7777-7777-777777777777"), "scaffold_blue_frame"),
             null);
 
         var response = await client.PostAsJsonAsync("/api/v1/match-results", request);
@@ -80,7 +80,7 @@ public sealed class MatchResultsContractTests
             Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
             Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc"),
             Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd"),
-            CreatePlacementIntents(Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd"), "frame-a", "deck-a", "diag-a"),
+            CreatePlacementIntents(Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd"), "scaffold_blue_frame", "scaffold_yellow_deck", "scaffold_red_diagonal"),
             999999);
 
         var response = await client.PostAsJsonAsync("/api/v1/match-results", request);
@@ -100,7 +100,7 @@ public sealed class MatchResultsContractTests
             Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
             Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc"),
             seedId,
-            CreatePlacementIntents(seedId, "frame-a", "deck-a", "diag-a", "component-not-present"),
+            CreatePlacementIntents(seedId, "scaffold_blue_frame", "scaffold_yellow_deck", "scaffold_red_diagonal", "component-not-present"),
             1);
 
         var first = await client.PostAsJsonAsync("/api/v1/match-results", request);
