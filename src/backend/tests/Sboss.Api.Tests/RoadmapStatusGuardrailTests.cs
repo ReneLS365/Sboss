@@ -19,8 +19,8 @@ public sealed class RoadmapStatusGuardrailTests
     {
         var masterStatus = File.ReadAllText(ResolveRepoPath("docs/MASTER_STATUS.md"));
         masterStatus = masterStatus.Replace(
-            "- Next task: **2C — Client-Side Prediction**",
             "- Next task: **2D — Scoring Engine**",
+            "- Next task: **2E — Scaffold Assembly Rules**",
             StringComparison.Ordinal);
 
         var result = RunValidation(WriteTempFile(masterStatus));
@@ -34,14 +34,14 @@ public sealed class RoadmapStatusGuardrailTests
     {
         var masterStatus = File.ReadAllText(ResolveRepoPath("docs/MASTER_STATUS.md"));
         masterStatus = masterStatus.Replace(
-            "- [ ] 2B Unity Isometrisk \"Sjakbajs\" Shell: Implementering af isometrisk 3D-kamera, drag-and-drop interaktion og mobiloptimeret UI-bundbar.",
-            "- [ ] 2Z Unity Isometrisk \"Sjakbajs\" Shell: Implementering af isometrisk 3D-kamera, drag-and-drop interaktion og mobiloptimeret UI-bundbar.",
+            "- [ ] 2C Client-Side Prediction: Tillad Unity at placere dele øjeblikkeligt lokalt, mens server godkender asynkront. Rollback ved server-afvisning.",
+            "- [ ] 2Z Client-Side Prediction: Tillad Unity at placere dele øjeblikkeligt lokalt, mens server godkender asynkront. Rollback ved server-afvisning.",
             StringComparison.Ordinal);
 
         var result = RunValidation(WriteTempFile(masterStatus));
 
         Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("Current task step '2B' is missing", result.Output, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Current task step '2C' is missing", result.Output, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
