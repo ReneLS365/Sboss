@@ -11,15 +11,8 @@ Sboss is bootstrapped as a server-authoritative online game foundation where .NE
 - Local orchestration: Docker Compose
 - CI: GitHub Actions
 
-## Current Roadmap Phase
-- **Phase 2 (Core Gameplay Validation)**
-
 ## Project Status
 Project status, explicit current phase, and next task are tracked in [docs/MASTER_STATUS.md](docs/MASTER_STATUS.md).
-
-Current roadmap position:
-- **Current task: 2A — Command Validation Queue**
-- **Next task: 2B — Unity Isometrisk Shell**
 
 ## Execution Model
 - Roadmap and progress source of truth: [docs/MASTER_STATUS.md](docs/MASTER_STATUS.md)
