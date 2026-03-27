@@ -15,6 +15,7 @@ namespace SbossClient.Client.Input
         [SerializeField] private float dragPlaneHeight = 0f;
 
         private bool _isDragging;
+        private bool _ignoreReleaseUntilNextPress;
         private string _activeComponentId = string.Empty;
         private Vector3 _currentPreviewWorld;
 
@@ -33,12 +34,14 @@ namespace SbossClient.Client.Input
 
             _activeComponentId = componentId;
             _isDragging = true;
+            _ignoreReleaseUntilNextPress = true;
             SetGhostVisible(true);
         }
 
         public void CancelDrag()
         {
             _isDragging = false;
+            _ignoreReleaseUntilNextPress = false;
             _activeComponentId = string.Empty;
             SetGhostVisible(false);
         }
@@ -61,7 +64,19 @@ namespace SbossClient.Client.Input
                 PreviewUpdated?.Invoke(worldPosition);
             }
 
-            if (UnityEngine.Input.GetMouseButtonUp(0))
+            if (_ignoreReleaseUntilNextPress)
+            {
+                if (UnityEngine.Input.GetMouseButtonDown(0))
+                {
+                    _ignoreReleaseUntilNextPress = false;
+                }
+                else if (UnityEngine.Input.GetMouseButtonUp(0))
+                {
+                    return;
+                }
+            }
+
+            if (!_ignoreReleaseUntilNextPress && UnityEngine.Input.GetMouseButtonUp(0))
             {
                 PlacementRequested?.Invoke(new PlacementRequestPayload(_activeComponentId, _currentPreviewWorld));
                 CancelDrag();
