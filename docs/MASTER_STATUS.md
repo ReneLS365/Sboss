@@ -3,8 +3,8 @@
 ## Current Position
 - Current phase: **Phase 2 — Core Gameplay Validation**
 - Completed phase: **Phase 1 — Authoritative Core Domain**
-- Current task: **2B — Unity Isometrisk Shell**
-- Next task: **2C — Client-Side Prediction**
+- Current task: **2C — Client-Side Prediction**
+- Next task: **2D — Scoring Engine**
 
 ---
 
@@ -32,7 +32,7 @@ Fokus: Fundament, sikkerhed og stateless HTTP-arkitektur.
 ## Phase 2 — Core Gameplay Validation
 Fokus: Det faktiske spil. Implementering af event-baseret Command Queue og Client-Side Prediction for et flydende RTS-byggeflow.
 - [x] 2A Command Validation Queue: Server-side modtagelse og lynhurtig validering af diskrete bygge-actions (placér, fjern).
-- [ ] 2B Unity Isometrisk "Sjakbajs" Shell: Implementering af isometrisk 3D-kamera, drag-and-drop interaktion og mobiloptimeret UI-bundbar.
+- [x] 2B Unity Isometrisk "Sjakbajs" Shell: Implementering af isometrisk 3D-kamera, drag-and-drop interaktion og mobiloptimeret UI-bundbar.
 - [ ] 2C Client-Side Prediction: Tillad Unity at placere dele øjeblikkeligt lokalt, mens server godkender asynkront. Rollback ved server-afvisning.
 - [ ] 2D Scoring Engine: Server-autoritativ beregning af stabilitet, combo-multiplier og tid.
 - [ ] 2E Scaffold Assembly Rules: Definer geometrisk logik for forbindelser (Blå ramme -> Gult dæk -> Rød diagonal).

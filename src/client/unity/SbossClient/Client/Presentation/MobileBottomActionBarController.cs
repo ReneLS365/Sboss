@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -15,9 +16,12 @@ namespace SbossClient.Client.Presentation
         [SerializeField] private Button placeDiagonalButton;
         [SerializeField] private Button cancelButton;
         [SerializeField] private GameObject pendingIndicator;
+        [SerializeField] private GameObject rejectionIndicator;
+        [SerializeField] private float rejectionVisibleSeconds = 1.25f;
 
         public event Action<string>? PlaceActionPressed;
         public event Action? CancelPressed;
+        private Coroutine? _rejectionCoroutine;
 
         private void Awake()
         {
@@ -26,6 +30,7 @@ namespace SbossClient.Client.Presentation
             HookButton(placeDiagonalButton, () => PlaceActionPressed?.Invoke("diagonal_red"));
             HookButton(cancelButton, () => CancelPressed?.Invoke());
             SetPendingRequestVisual(false);
+            SetRejectionVisual(false);
         }
 
         public void SetPendingRequestVisual(bool pending)
@@ -33,6 +38,33 @@ namespace SbossClient.Client.Presentation
             if (pendingIndicator != null)
             {
                 pendingIndicator.SetActive(pending);
+            }
+        }
+
+        public void ShowRejectionVisual(string message)
+        {
+            _ = message;
+            if (_rejectionCoroutine != null)
+            {
+                StopCoroutine(_rejectionCoroutine);
+            }
+
+            _rejectionCoroutine = StartCoroutine(ShowRejectionVisualCoroutine());
+        }
+
+        private IEnumerator ShowRejectionVisualCoroutine()
+        {
+            SetRejectionVisual(true);
+            yield return new WaitForSeconds(rejectionVisibleSeconds);
+            SetRejectionVisual(false);
+            _rejectionCoroutine = null;
+        }
+
+        private void SetRejectionVisual(bool visible)
+        {
+            if (rejectionIndicator != null)
+            {
+                rejectionIndicator.SetActive(visible);
             }
         }
 

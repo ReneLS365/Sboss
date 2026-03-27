@@ -78,7 +78,7 @@ namespace SbossClient.Client.Input
 
             if (!_ignoreReleaseUntilNextPress && UnityEngine.Input.GetMouseButtonUp(0))
             {
-                PlacementRequested?.Invoke(new PlacementRequestPayload(_activeComponentId, _currentPreviewWorld));
+                PlacementRequested?.Invoke(PlacementRequestPayload.Create(_activeComponentId, _currentPreviewWorld));
                 CancelDrag();
             }
         }
@@ -116,13 +116,21 @@ namespace SbossClient.Client.Input
 
     public readonly struct PlacementRequestPayload
     {
-        public PlacementRequestPayload(string componentId, Vector3 worldPosition)
+        public PlacementRequestPayload(string clientRequestId, string componentId, Vector3 worldPosition)
         {
+            ClientRequestId = clientRequestId;
             ComponentId = componentId;
             WorldPosition = worldPosition;
         }
 
+        public string ClientRequestId { get; }
         public string ComponentId { get; }
         public Vector3 WorldPosition { get; }
+
+        public static PlacementRequestPayload Create(string componentId, Vector3 worldPosition)
+        {
+            var requestId = Guid.NewGuid().ToString("N");
+            return new PlacementRequestPayload(requestId, componentId, worldPosition);
+        }
     }
 }
