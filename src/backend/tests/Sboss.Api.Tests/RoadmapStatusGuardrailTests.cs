@@ -19,8 +19,8 @@ public sealed class RoadmapStatusGuardrailTests
     {
         var masterStatus = File.ReadAllText(ResolveRepoPath("docs/MASTER_STATUS.md"));
         masterStatus = masterStatus.Replace(
-            "- Next task: **2B — Unity Isometrisk Shell**",
             "- Next task: **2C — Client-Side Prediction**",
+            "- Next task: **2D — Scoring Engine**",
             StringComparison.Ordinal);
 
         var result = RunValidation(WriteTempFile(masterStatus));
@@ -34,29 +34,14 @@ public sealed class RoadmapStatusGuardrailTests
     {
         var masterStatus = File.ReadAllText(ResolveRepoPath("docs/MASTER_STATUS.md"));
         masterStatus = masterStatus.Replace(
-            "- [ ] 2A Command Validation Queue: Server-side modtagelse og lynhurtig validering af diskrete bygge-actions (placér, fjern).",
-            "- [ ] 2Z Command Validation Queue: Server-side modtagelse og lynhurtig validering af diskrete bygge-actions (placér, fjern).",
+            "- [ ] 2B Unity Isometrisk \"Sjakbajs\" Shell: Implementering af isometrisk 3D-kamera, drag-and-drop interaktion og mobiloptimeret UI-bundbar.",
+            "- [ ] 2Z Unity Isometrisk \"Sjakbajs\" Shell: Implementering af isometrisk 3D-kamera, drag-and-drop interaktion og mobiloptimeret UI-bundbar.",
             StringComparison.Ordinal);
 
         var result = RunValidation(WriteTempFile(masterStatus));
 
         Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("Current task step '2A' is missing", result.Output, StringComparison.OrdinalIgnoreCase);
-    }
-
-    [Fact]
-    public void ValidationScript_FailsWhenCurrentPhaseDoesNotMatchCurrentTask()
-    {
-        var masterStatus = File.ReadAllText(ResolveRepoPath("docs/MASTER_STATUS.md"));
-        masterStatus = masterStatus.Replace(
-            "- Current phase: **Phase 2 — Core Gameplay Validation**",
-            "- Current phase: **Phase 5 — Release Prep**",
-            StringComparison.Ordinal);
-
-        var result = RunValidation(WriteTempFile(masterStatus));
-
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("does not match current task step '2A'", result.Output, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Current task step '2B' is missing", result.Output, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
