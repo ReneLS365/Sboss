@@ -7,7 +7,7 @@ namespace Sboss.Api.Tests;
 
 public sealed class RoadmapStatusGuardrailTests
 {
-    private const string ActiveTaskId = "P1I-HARDENING-AND-INVARIANTS";
+    private const string ActiveTaskId = "P2A-COMMAND-VALIDATION-QUEUE";
     private static readonly Regex MasterCurrentTaskRegex = new("^- Current task:\\s+\\*\\*(?<step>\\d+[A-Z])\\s+[—-]\\s+(?<title>.+)\\*\\*$", RegexOptions.Multiline);
     private static readonly Regex MasterNextTaskRegex = new("^- Next task:\\s+\\*\\*(?<step>\\d+[A-Z])\\s+[—-]\\s+(?<title>.+)\\*\\*$", RegexOptions.Multiline);
     private static readonly Regex PlanTaskBlockRegex = new("^## Task Record — (?<header>.+?)\\r?\\n(?<body>.*?)(?=^## Task Record — |\\z)", RegexOptions.Multiline | RegexOptions.Singleline);
@@ -55,7 +55,7 @@ public sealed class RoadmapStatusGuardrailTests
     public void ValidationScript_FailsWhenNextTaskSkipsAhead()
     {
         var masterStatus = File.ReadAllText(ResolveRepoPath("docs/MASTER_STATUS.md"));
-        masterStatus = masterStatus.Replace("- Next task: **2A — Tick model + schema**", "- Next task: **2B — Tick processor skeleton**", StringComparison.Ordinal);
+        masterStatus = masterStatus.Replace("- Next task: **2B — Unity Isometrisk Shell**", "- Next task: **2C — Client-Side Prediction**", StringComparison.Ordinal);
 
         var result = RunValidation(ResolveRepoPath("PLANS.md"), WriteTempFile(masterStatus), taskId: ActiveTaskId);
 
@@ -168,6 +168,64 @@ public sealed class RoadmapStatusGuardrailTests
     }
 
     [Fact]
+    public void ValidationScript_AllowsMissingPlansFileWhenTaskIdProvided()
+    {
+        const string masterStatus = """
+# Sboss — Master Status
+
+## Current Position
+- Current phase: **Phase 1 — Authoritative Core Domain**
+- Completed phase: **Phase 0 — Foundation / Bootstrap**
+- Current task: **1I — Hardening + invariants**
+- Next task: **2A — Tick model + schema**
+
+---
+
+## Phase 1 — Authoritative Core Domain
+- [x] 1H Integration tests for exploit resistance
+- [ ] 1I Hardening + invariants
+
+## Phase 2 — Deterministic Tick Engine
+- [ ] 2A Tick model + schema
+""";
+
+        var missingPlans = Path.Combine(Path.GetTempPath(), $"missing-plans-{Guid.NewGuid():N}.md");
+        var result = RunValidation(missingPlans, WriteTempFile(masterStatus), taskId: "P1I-HARDENING-AND-INVARIANTS");
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("validation passed", result.Output, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void ValidationScript_AllowsMissingPlansFileWithoutTaskId()
+    {
+        const string masterStatus = """
+# Sboss — Master Status
+
+## Current Position
+- Current phase: **Phase 1 — Authoritative Core Domain**
+- Completed phase: **Phase 0 — Foundation / Bootstrap**
+- Current task: **1I — Hardening + invariants**
+- Next task: **2A — Tick model + schema**
+
+---
+
+## Phase 1 — Authoritative Core Domain
+- [x] 1H Integration tests for exploit resistance
+- [ ] 1I Hardening + invariants
+
+## Phase 2 — Deterministic Tick Engine
+- [ ] 2A Tick model + schema
+""";
+
+        var missingPlans = Path.Combine(Path.GetTempPath(), $"missing-plans-{Guid.NewGuid():N}.md");
+        var result = RunValidation(missingPlans, WriteTempFile(masterStatus), taskId: null);
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("validation passed", result.Output, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void AdvanceScript_DryRun_AllowsDirectRoadmapSuccessor()
     {
         var state = ReadRepoRoadmapState();
@@ -222,6 +280,73 @@ public sealed class RoadmapStatusGuardrailTests
 
         Assert.NotEqual(0, result.ExitCode);
         Assert.Contains("not direct roadmap successor", result.Output, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void AdvanceScript_DryRun_AllowsMissingPlansFile()
+    {
+        const string masterStatus = """
+# Sboss — Master Status
+
+## Current Position
+- Current phase: **Phase 1 — Authoritative Core Domain**
+- Completed phase: **Phase 0 — Foundation / Bootstrap**
+- Current task: **1I — Hardening + invariants**
+- Next task: **2A — Tick model + schema**
+
+---
+
+## Status overview
+- [x] Phase 0 — Foundation / Bootstrap
+- [ ] Phase 1 — Authoritative Core Domain
+- [ ] Phase 2 — Deterministic Tick Engine
+
+---
+
+## Phase 1 — Authoritative Core Domain
+- [x] 1H Integration tests for exploit resistance
+- [ ] 1I Hardening + invariants
+
+## Phase 2 — Deterministic Tick Engine
+- [ ] 2A Tick model + schema
+- [ ] 2B Tick processor skeleton
+""";
+
+        const string readme = """
+# Sboss
+
+Current roadmap position:
+- **Current task: 1I — Hardening + invariants**
+- **Next task: 2A — Tick model + schema**
+""";
+
+        const string guardrail = """
+namespace Sboss.Api.Tests;
+
+public sealed class RoadmapStatusGuardrailTests
+{
+    private const string ActiveTaskId = "P1I-HARDENING-AND-INVARIANTS";
+}
+""";
+
+        var fixture = WriteTempRoadmapFixture(
+            plans: null,
+            masterStatus: masterStatus,
+            readme: readme,
+            guardrail: guardrail);
+
+        var result = RunAdvance(
+            fixture.PlansPath,
+            fixture.MasterStatusPath,
+            fixture.ReadmePath,
+            fixture.GuardrailPath,
+            expectedCurrentTask: "P1I-HARDENING-AND-INVARIANTS",
+            nextTask: "2A",
+            mergedPr: "#28",
+            dryRun: true);
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("Roadmap advancement check passed", result.Output, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -449,7 +574,7 @@ public sealed class RoadmapStatusGuardrailTests
         }
     }
 
-    private static (int ExitCode, string Output) RunValidation(string plansPath, string masterStatusPath, string taskId)
+    private static (int ExitCode, string Output) RunValidation(string plansPath, string masterStatusPath, string? taskId)
     {
         var startInfo = new ProcessStartInfo("python3")
         {
@@ -463,8 +588,11 @@ public sealed class RoadmapStatusGuardrailTests
         startInfo.ArgumentList.Add(plansPath);
         startInfo.ArgumentList.Add("--master-status-file");
         startInfo.ArgumentList.Add(masterStatusPath);
-        startInfo.ArgumentList.Add("--task-id");
-        startInfo.ArgumentList.Add(taskId);
+        if (!string.IsNullOrWhiteSpace(taskId))
+        {
+            startInfo.ArgumentList.Add("--task-id");
+            startInfo.ArgumentList.Add(taskId);
+        }
 
         using var process = Process.Start(startInfo)!;
         var stdout = process.StandardOutput.ReadToEnd();
@@ -554,7 +682,7 @@ public sealed class RoadmapStatusGuardrailTests
     }
 
     private static (string PlansPath, string MasterStatusPath, string ReadmePath, string GuardrailPath) WriteTempRoadmapFixture(
-        string plans,
+        string? plans,
         string masterStatus,
         string readme,
         string guardrail)
@@ -569,7 +697,10 @@ public sealed class RoadmapStatusGuardrailTests
         var readmePath = Path.Combine(directory, "README.md");
         var guardrailPath = Path.Combine(directory, "src/backend/tests/Sboss.Api.Tests/RoadmapStatusGuardrailTests.cs");
 
-        File.WriteAllText(plansPath, plans);
+        if (!string.IsNullOrEmpty(plans))
+        {
+            File.WriteAllText(plansPath, plans);
+        }
         File.WriteAllText(masterPath, masterStatus);
         File.WriteAllText(readmePath, readme);
         File.WriteAllText(guardrailPath, guardrail);

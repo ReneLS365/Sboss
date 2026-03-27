@@ -1,37 +1,24 @@
-# Sboss — Master Status
+# Sboss — Master Status (Lean MVP)
 
 ## Current Position
-- Current phase: **Phase 1 — Authoritative Core Domain**
-- Completed phase: **Phase 0 — Foundation / Bootstrap**
-- Current task: **1I — Hardening + invariants**
-- Next task: **2A — Tick model + schema**
+- Current phase: **Phase 2 — Core Gameplay Validation**
+- Completed phase: **Phase 1 — Authoritative Core Domain**
+- Current task: **2A — Command Validation Queue**
+- Next task: **2B — Unity Isometrisk Shell**
 
 ---
 
 ## Status overview
-- [x] Phase 0 — Foundation / Bootstrap
-- [ ] Phase 1 — Authoritative Core Domain
-- [ ] Phase 2 — Deterministic Tick Engine
-- [ ] Phase 3 — Identity / Auth Binding
-- [ ] Phase 4 — Company Management Loop
-- [ ] Phase 5 — Contract System
-- [ ] Phase 6 — Inventory / Equipment
-- [ ] Phase 7 — Economy Hardening
-- [ ] Phase 8 — Shards / Multiplayer Authority
-- [ ] Phase 9 — Unity Dumb Client Shell
-- [ ] Phase 10 — First-Person Worker Prototype
-- [ ] Phase 11 — Scaffold Build Rules
-- [ ] Phase 12 — Progression / Unlocks
-- [ ] Phase 13 — Market / Trade
-- [ ] Phase 14 — Social / Competition
-- [ ] Phase 15 — Observability / Admin Tooling
-- [ ] Phase 16 — Content Pipeline / Balancing
-- [ ] Phase 17 — Hardening / Load / Security
-- [ ] Phase 18 — MVP Release
+- [x] Phase 1 — Authoritative Core Domain (HTTP, DB, Economy Ledger)
+- [ ] Phase 2 — Core Gameplay Validation (Command Queue, Unity RTS-kamera, Score-motor)
+- [ ] Phase 3 — Company & Meta-loop (Yard Inventory, Akkord-system, XP)
+- [ ] Phase 4 — Asynchronous Competition (Leaderboards, Daily Challenges, Ghost Data)
+- [ ] Phase 5 — Release Prep (Anti-cheat, QA, Deployment)
 
 ---
 
-## Phase 1 — Authoritative Core Domain
+## Phase 1 — Authoritative Core Domain (FÆRDIG)
+Fokus: Fundament, sikkerhed og stateless HTTP-arkitektur.
 - [x] 1A Domain entities + contracts
 - [x] 1B Database schema + migration baseline
 - [x] 1C Core repositories
@@ -40,124 +27,37 @@
 - [x] 1F Company/job application services
 - [x] 1G First vertical slice HTTP endpoints
 - [x] 1H Integration tests for exploit resistance
-- [ ] 1I Hardening + invariants
+- [x] 1I Hardening + invariants
 
-Audit note:
-- The current repo already contains exploit-resistance integration coverage for the scoped Phase 1 HTTP mutation slice, including economy transaction replay handling, contract job transition conflict coverage, and contract job application duplicate/concurrency coverage. Phase 1H is complete, and Phase 1I is now the active task before Phase 2 begins.
+## Phase 2 — Core Gameplay Validation
+Fokus: Det faktiske spil. Implementering af event-baseret Command Queue og Client-Side Prediction for et flydende RTS-byggeflow.
+- [ ] 2A Command Validation Queue: Server-side modtagelse og lynhurtig validering af diskrete bygge-actions (placér, fjern).
+- [ ] 2B Unity Isometrisk "Sjakbajs" Shell: Implementering af isometrisk 3D-kamera, drag-and-drop interaktion og mobiloptimeret UI-bundbar.
+- [ ] 2C Client-Side Prediction: Tillad Unity at placere dele øjeblikkeligt lokalt, mens server godkender asynkront. Rollback ved server-afvisning.
+- [ ] 2D Scoring Engine: Server-autoritativ beregning af stabilitet, combo-multiplier og tid.
+- [ ] 2E Scaffold Assembly Rules: Definer geometrisk logik for forbindelser (Blå ramme -> Gult dæk -> Rød diagonal).
+- [ ] 2F Vertical Slice Test: Spil én komplet runde fra opgaveaflæsning til server-valideret score.
 
-## Phase 2 — Deterministic Tick Engine
-- [ ] 2A Tick model + schema
-- [ ] 2B Tick processor skeleton
-- [ ] 2C Move job progression into ticks
-- [ ] 2D Tick idempotency + lock safety
-- [ ] 2E Tick tests + replay tests
-- [ ] 2F Tick observability
+## Phase 3 — Company & Meta-loop
+Fokus: Progression og økonomi (RTS-logistik).
+- [ ] 3A Yard Capacity & Inventory: Begrænset lagerplads, køb af stilladsdele. Hard-cap blokerer store events.
+- [ ] 3B Akkord & Crew Split: Enhedsstyring. Balancering af dyre svende (hastighed) mod billige lærlinge (XP). 60/40 profitdeling.
+- [ ] 3C Wear & Tear System: Simuleret slitage ved fejlplaceringer (Materialeintegritet).
+- [ ] 3D Loadout & Fog of War: Tidsbegrænset spatialt minigame for at pakke varevognen korrekt før opgaven låses.
+- [ ] 3E XP & Progression: Oplåsning af sværere bane-templates (f.eks. Offshore Rotationer).
 
-## Phase 3 — Identity / Auth Binding
-- [ ] 3A Auth strategy decision
-- [ ] 3B Player identity binding
-- [ ] 3C Request user context
-- [ ] 3D Ownership enforcement
-- [ ] 3E Authorization tests
+## Phase 4 — Asynchronous Competition
+Fokus: Territory Control og rivalisering uden synkron realtids-netkode.
+- [ ] 4A Leaderboard API: Globale, regionale og Crew-baserede ranglister.
+- [ ] 4B Deterministisk Level Generator: Sikr at seeds genererer 100% matematisk identiske baner.
+- [ ] 4C Ghost Data Pipeline: Optag bygge-sekvenser og gem som letvægts JSON til asynkrone replays.
+- [ ] 4D Daily Challenge System: 24-timers roterende global udfordring. "Territory Control" vha. highscores.
+- [ ] 4E Social Push & Sabotage: Notifikationer ved slåede rekorder. Mulighed for mild asynkron sabotage mod rivaler.
 
-## Phase 4 — Company Management Loop
-- [ ] 4A Company stats model
-- [ ] 4B Crew/workforce model
-- [ ] 4C Company progression rules
-- [ ] 4D Company management endpoints
-- [ ] 4E Company progression tests
-
-## Phase 5 — Contract System
-- [ ] 5A Contract templates
-- [ ] 5B Contract generation service
-- [ ] 5C Reward formula layer
-- [ ] 5D Failure/timeout/cancel states
-- [ ] 5E Contract history and results
-- [ ] 5F Contract abuse tests
-
-## Phase 6 — Inventory / Equipment
-- [ ] 6A Inventory item model
-- [ ] 6B Company inventory storage
-- [ ] 6C Inventory mutation service
-- [ ] 6D Bind jobs to inventory requirements
-- [ ] 6E Inventory endpoints
-- [ ] 6F Inventory exploit tests
-
-## Phase 7 — Economy Hardening
-- [ ] 7A Unify all currency entry points
-- [ ] 7B Versioning and concurrency review
-- [ ] 7C Idempotency coverage audit
-- [ ] 7D Economy audit tooling
-- [ ] 7E Fuzz/retry abuse tests
-
-## Phase 8 — Shards / Multiplayer Authority
-- [ ] 8A Shard model
-- [ ] 8B Shard-aware persistence
-- [ ] 8C Tick ownership per shard
-- [ ] 8D Session/presence registry
-- [ ] 8E Concurrency/load simulation
-
-## Phase 9 — Unity Dumb Client Shell
-- [ ] 9A Unity project bootstrap
-- [ ] 9B API client layer
-- [ ] 9C Login/bootstrap state fetch
-- [ ] 9D Company dashboard UI
-- [ ] 9E Job management UI
-- [ ] 9F Inventory/economy UI
-
-## Phase 10 — First-Person Worker Prototype
-- [ ] 10A Interaction model
-- [ ] 10B First-person shell
-- [ ] 10C Server action requests
-- [ ] 10D Worker-task binding
-- [ ] 10E Anti-spam/anti-speed validation
-
-## Phase 11 — Scaffold Build Rules
-- [ ] 11A Scaffold part data model
-- [ ] 11B Placement validation service
-- [ ] 11C Assembly rules
-- [ ] 11D Dismantle rules
-- [ ] 11E Scaffold test suite
-
-## Phase 12 — Progression / Unlocks
-- [ ] 12A XP/level model
-- [ ] 12B Reward-to-progression binding
-- [ ] 12C Unlock trees
-- [ ] 12D Progression anti-duplication tests
-
-## Phase 13 — Market / Trade
-- [ ] 13A Listing/order model
-- [ ] 13B Trade execution service
-- [ ] 13C Escrow/reservation logic
-- [ ] 13D Market endpoints
-- [ ] 13E Trade exploit tests
-
-## Phase 14 — Social / Competition
-- [ ] 14A Team/company roles
-- [ ] 14B Invitations and membership flows
-- [ ] 14C Leaderboards and ranking
-- [ ] 14D Competitive event hooks
-
-## Phase 15 — Observability / Admin Tooling
-- [ ] 15A Structured logging
-- [ ] 15B Metrics/health instrumentation
-- [ ] 15C Internal admin endpoints
-- [ ] 15D Incident/debug workflows
-
-## Phase 16 — Content Pipeline / Balancing
-- [ ] 16A Externalized content definitions
-- [ ] 16B Content import/versioning
-- [ ] 16C Balancing workflow
-
-## Phase 17 — Hardening / Load / Security
-- [ ] 17A Load test harness
-- [ ] 17B Concurrency stress tests
-- [ ] 17C Abuse/fuzz suite
-- [ ] 17D Backup/restore/migration safety
-- [ ] 17E Performance trimming
-
-## Phase 18 — MVP Release
-- [ ] 18A MVP scope lock
-- [ ] 18B Release QA pass
-- [ ] 18C Deployment and rollout
-- [ ] 18D Post-release issue funnel
+## Phase 5 — Release Prep
+Fokus: Stabilitet, on-boarding og lancering.
+- [ ] 5A Anti-Cheat Hardening: Valider byggetider mod teoretisk minimums-tid. Afvis klientmanipulation.
+- [ ] 5B UX Polish & Audio: Tilføj metalliske CLANK-lyde og visuel partikel-feedback på combos.
+- [ ] 5C Load & Stress Test: Test database-concurrency under Daily Challenge peaks.
+- [ ] 5D MVP Scope Lock & QA: Frys features, udfør QA-pas.
+- [ ] 5E Deployment Pipelines: App Store og Play Store distribution.

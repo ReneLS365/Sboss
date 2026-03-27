@@ -4,19 +4,18 @@
 This document locks the repository execution model before Phase 1A begins.
 
 ## Control Rules
-- `docs/MASTER_STATUS.md` is the only roadmap and in-repo progress source.
-- Every non-trivial task must be added to `PLANS.md` before implementation.
-- Work must remain inside the active phase and task scope.
-- Draft pull requests only until human review approves the change set.
-- Server-authoritative architecture is mandatory; no client-owned truth may be introduced.
+ - `docs/MASTER_STATUS.md` is the only roadmap and in-repo progress source.
+ - `PLANS.md` remains the execution ledger until all guardrail tooling migrates; roadmap scripts must treat a missing `PLANS.md` path as migration-mode (no traceback/file-not-found crash).
+ - Work must remain inside the active phase and task scope.
+ - Draft pull requests only until human review approves the change set.
+ - Server-authoritative architecture is mandatory; no client-owned truth may be introduced.
 
 ## Required Delivery Sequence
 1. Confirm the requested work is inside the current phase in `docs/MASTER_STATUS.md`.
-2. Record the task scope, allowed files, and non-goals in `PLANS.md`.
-3. Make the smallest possible change set that satisfies the scoped task.
-4. Validate the diff against the task's declared allowlist, forbidden paths, and non-goals.
-5. For documentation-only tasks, prove that no runtime code was modified; for implementation tasks, prove that only the scoped runtime paths changed.
-6. Open a draft PR using the repository templates.
+2. Make the smallest possible change set that satisfies the scoped task.
+3. Validate the diff against the task's declared allowlist, forbidden paths, and non-goals.
+4. For documentation-only tasks, prove that no runtime code was modified; for implementation tasks, prove that only the scoped runtime paths changed.
+5. Open a draft PR using the repository templates.
 
 ## Task Definition Rules
 - Use `docs/TASK_TEMPLATE.md` for new scoped tasks.
@@ -31,7 +30,13 @@ This document locks the repository execution model before Phase 1A begins.
 - Architecture gate: changes must preserve server-authoritative ownership.
 - Documentation gate: README and templates must point contributors to the locked control documents when relevant.
 
+## PLANS Migration Inventory (active consumers)
+- `scripts/validate-roadmap-status.py` (`--plans-file`, `--task-id`) remains backward-compatible for existing CI/test callers.
+- `scripts/advance-roadmap-status.py` still accepts `--plans-file`; in migration-mode, missing plan files are tolerated for dry-run and validation paths.
+- `src/backend/tests/Sboss.Api.Tests/RoadmapStatusGuardrailTests.cs` currently exercises both with-plan and missing-plan fixture paths.
+
 ## Forbidden Drift
-- Do not treat pull requests, issues, or task documents as roadmap replacements.
-- Do not create hidden sources of roadmap/progress status outside `docs/MASTER_STATUS.md`; `PLANS.md` may track scoped task execution records but must not contradict roadmap state.
-- Do not implement future-phase runtime logic under the cover of documentation or scaffolding work.
+ - Do not treat pull requests, issues, or task documents as roadmap replacements.
+ - Avoid hidden sources of roadmap/progress status outside `docs/MASTER_STATUS.md`.
+ - Do not remove backward-compatible roadmap validator flags (`--plans-file`, `--task-id`) until all known callers/tests are migrated.
+ - Do not implement future-phase runtime logic under the cover of documentation or scaffolding work.
