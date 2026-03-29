@@ -551,7 +551,7 @@ app.MapPost("/api/v1/crews/{crewId:guid}/members", async (
     }
     catch (CrewServiceException exception) when (exception.Reason == CrewServiceFailureReason.Forbidden)
     {
-        return Results.Forbid();
+        return Results.StatusCode(StatusCodes.Status403Forbidden);
     }
     catch (CrewServiceException exception) when (exception.Reason == CrewServiceFailureReason.InvalidRequest)
     {
@@ -580,7 +580,7 @@ app.MapPost("/api/v1/crews/{crewId:guid}/members/{memberAccountId:guid}/remove",
     }
     catch (CrewServiceException exception) when (exception.Reason == CrewServiceFailureReason.Forbidden)
     {
-        return Results.Forbid();
+        return Results.StatusCode(StatusCodes.Status403Forbidden);
     }
     catch (CrewServiceException exception) when (exception.Reason == CrewServiceFailureReason.InvalidRequest)
     {
@@ -650,7 +650,7 @@ app.MapPost("/api/v1/crews/{crewId:guid}/payouts", async (
     }
     catch (CrewServiceException exception) when (exception.Reason == CrewServiceFailureReason.Forbidden)
     {
-        return Results.Forbid();
+        return Results.StatusCode(StatusCodes.Status403Forbidden);
     }
     catch (CrewServiceException exception) when (exception.Reason == CrewServiceFailureReason.InvalidRequest)
     {
