@@ -163,6 +163,28 @@ public sealed class MatchResultsContractTests
         Assert.Equal(67, result.StabilityPercent);
     }
 
+    [Fact]
+    public async Task PostMatchResult_RejectsOutOfOrderAssemblySequenceUsingServerAuthoritativeRules()
+    {
+        var client = _factory.CreateClient();
+        var seedId = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
+        var request = new PostMatchResultRequest(
+            Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+            Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc"),
+            seedId,
+            CreatePlacementIntents(seedId, "scaffold_yellow_deck", "scaffold_blue_frame", "scaffold_red_diagonal"),
+            null);
+
+        var response = await client.PostAsJsonAsync("/api/v1/match-results", request);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var result = await response.Content.ReadFromJsonAsync<PostMatchResultResponse>();
+        Assert.NotNull(result);
+        Assert.Equal(2, result!.Penalties);
+        Assert.Equal(33, result.StabilityPercent);
+        Assert.Equal(1, result.ComboMax);
+    }
+
     private static IReadOnlyList<PlaceComponentIntent> CreatePlacementIntents(Guid seedId, params string[] componentIds)
     {
         var timestamp = new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero);

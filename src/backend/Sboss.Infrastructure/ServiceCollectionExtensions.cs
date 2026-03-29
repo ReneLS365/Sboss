@@ -28,6 +28,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ICommandValidationQueue, CommandValidationQueue>();
         services.AddScoped<IScoringEngine, ScoringEngine>();
         services.AddScoped<IYardCapacityValidator, YardCapacityValidator>();
+        services.AddScoped<IScaffoldAssemblyRulesValidator, ScaffoldAssemblyRulesValidator>();
         services.AddScoped<IAuthoritativeYardCapacityProvider, AuthoritativeYardCapacityProvider>();
         services.AddScoped<IAuthoritativeComponentCapacityProvider, AuthoritativeComponentCapacityProvider>();
         return services;
