@@ -51,6 +51,8 @@ app.MapPost("/api/v1/match-results", async (
     ILevelSeedRepository levelSeedRepository,
     IMatchResultRepository repository,
     ICommandValidationQueue commandValidationQueue,
+    IAuthoritativeYardCapacityProvider yardCapacityProvider,
+    IAuthoritativeComponentCapacityProvider componentCapacityProvider,
     IYardRepository yardRepository,
     IAuthoritativeComponentCatalog componentCatalog,
     IScoringEngine scoringEngine,
@@ -117,7 +119,7 @@ app.MapPost("/api/v1/match-results", async (
         });
     }
 
-    var remainingCapacityForSequence = snapshot.RemainingCapacity;
+    var remainingCapacityForSequence = await yardCapacityProvider.GetRemainingCapacityAsync(request.LevelSeedId, cancellationToken);
     var inventoryRemainingByItem = new Dictionary<string, int>(snapshot.InventoryQuantities, StringComparer.OrdinalIgnoreCase);
     var validationResults = new List<CommandValidationResult>(request.PlacementIntents.Count);
     var acceptedComponentIdsInSequence = new List<string>(request.PlacementIntents.Count);
@@ -128,6 +130,24 @@ app.MapPost("/api/v1/match-results", async (
             rawIntentJson,
             acceptedComponentIdsInSequence,
             cancellationToken);
+
+        if (validation.Accepted)
+        {
+            if (remainingCapacityForSequence.HasValue)
+            {
+                var requiredCapacity = await componentCapacityProvider.GetRequiredCapacityAsync(intent.ComponentId, cancellationToken);
+                if (!requiredCapacity.HasValue || requiredCapacity.Value > remainingCapacityForSequence.Value)
+                {
+                    validation = CommandValidationResult.Reject(
+                        "yard_capacity_exceeded",
+                        "Required capacity exceeds remaining yard capacity for this placement sequence.");
+                }
+                else
+                {
+                    remainingCapacityForSequence -= requiredCapacity.Value;
+                }
+            }
+        }
 
         if (validation.Accepted)
         {
@@ -146,16 +166,9 @@ app.MapPost("/api/v1/match-results", async (
                         "inventory_insufficient",
                         $"Component '{component.ItemCode}' is not available in owned inventory.");
                 }
-                else if (component.UnitCapacity > remainingCapacityForSequence)
-                {
-                    validation = CommandValidationResult.Reject(
-                        "yard_capacity_exceeded",
-                        "Required capacity exceeds remaining yard capacity for this placement sequence.");
-                }
                 else
                 {
                     inventoryRemainingByItem[component.ItemCode] = currentlyOwned - 1;
-                    remainingCapacityForSequence -= component.UnitCapacity;
                 }
             }
         }
