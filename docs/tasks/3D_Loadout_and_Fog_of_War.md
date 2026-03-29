@@ -41,4 +41,4 @@ Build a timed, spatial mini‑game for packing the service van (Loadout) and int
 Use restore/build/test commands plus additional scenarios: submit different loadouts and ensure server responses match expectations; simulate level progress to verify fog reveals.
 
 ## Notes
-- The packing puzzle should be solved client‑side, but only validated on the server.
+- The client may offer drag-and-drop UX previews, but the server owns all packing rules, legality checks, and final outcomes.
