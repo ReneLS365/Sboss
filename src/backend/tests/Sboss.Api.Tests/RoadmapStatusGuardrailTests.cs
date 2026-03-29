@@ -1,10 +1,23 @@
 using System.Diagnostics;
 using System.Reflection;
+using System.Text.RegularExpressions;
 
 namespace Sboss.Api.Tests;
 
 public sealed class RoadmapStatusGuardrailTests
 {
+    private static readonly Regex CurrentTaskRegex = new(
+        @"^- Current task:\s+\*\*(?<step>\d+[A-Z])\s+[—-]\s+.+\*\*$",
+        RegexOptions.Multiline);
+
+    private static readonly Regex NextTaskRegex = new(
+        @"^- Next task:\s+\*\*(?<step>\d+[A-Z])\s+[—-]\s+.+\*\*$",
+        RegexOptions.Multiline);
+
+    private static readonly Regex RoadmapChecklistRegex = new(
+        @"^- \[(?: |x|X)\]\s+(?<step>\d+[A-Z])(?:\s+[—-])?\s+(?<title>.+)$",
+        RegexOptions.Multiline);
+
     [Fact]
     public void ValidationScript_PassesForCurrentRepoState()
     {
@@ -17,11 +30,21 @@ public sealed class RoadmapStatusGuardrailTests
     [Fact]
     public void ValidationScript_FailsWhenNextTaskSkipsAhead()
     {
-        var masterStatus = File.ReadAllText(ResolveRepoPath("docs/MASTER_STATUS.md"));
-        masterStatus = masterStatus.Replace(
-            "- Next task: **2F — Vertical Slice Test**",
-            "- Next task: **3A — Yard Capacity & Inventory**",
-            StringComparison.Ordinal);
+        var masterStatus = ReadMasterStatus();
+        var nextStep = ExtractNextTaskStep(masterStatus);
+        var roadmapSteps = CollectRoadmapChecklistStepIdsInOrder(masterStatus);
+        var nextStepIndex = roadmapSteps.IndexOf(nextStep);
+
+        Assert.True(nextStepIndex >= 0, $"Expected to find Next task step '{nextStep}' in roadmap checklist.");
+        Assert.True(
+            nextStepIndex + 1 < roadmapSteps.Count,
+            $"Cannot construct skip-ahead fixture because Next task '{nextStep}' has no later roadmap step.");
+
+        var skippedAheadStep = roadmapSteps[nextStepIndex + 1];
+        var nextTaskLine = FindTaskLine(masterStatus, NextTaskRegex, "Next task");
+        var mutatedNextTaskLine = nextTaskLine.Replace(nextStep, skippedAheadStep, StringComparison.Ordinal);
+        Assert.NotEqual(nextTaskLine, mutatedNextTaskLine);
+        masterStatus = masterStatus.Replace(nextTaskLine, mutatedNextTaskLine, StringComparison.Ordinal);
 
         var result = RunValidation(WriteTempFile(masterStatus));
 
@@ -32,16 +55,22 @@ public sealed class RoadmapStatusGuardrailTests
     [Fact]
     public void ValidationScript_FailsWhenCurrentTaskMissingFromRoadmapChecklist()
     {
-        var masterStatus = File.ReadAllText(ResolveRepoPath("docs/MASTER_STATUS.md"));
-        masterStatus = masterStatus.Replace(
-            "- [ ] 2E Scaffold Assembly Rules: Definer geometrisk logik for forbindelser (Blå ramme -> Gult dæk -> Rød diagonal).",
-            "- [ ] 2Z Scaffold Assembly Rules: Definer geometrisk logik for forbindelser (Blå ramme -> Gult dæk -> Rød diagonal).",
-            StringComparison.Ordinal);
+        var masterStatus = ReadMasterStatus();
+        var currentStep = ExtractCurrentTaskStep(masterStatus);
+        var currentChecklistLine = FindRoadmapChecklistLineForStep(masterStatus, currentStep);
+        var invalidStep = DetermineInvalidRoadmapStepToken(masterStatus);
+        var mutatedChecklistLine = Regex.Replace(
+            currentChecklistLine,
+            $@"^(- \[(?: |x|X)\]\s+){Regex.Escape(currentStep)}(\b)",
+            $"$1{invalidStep}$2");
+
+        Assert.NotEqual(currentChecklistLine, mutatedChecklistLine);
+        masterStatus = masterStatus.Replace(currentChecklistLine, mutatedChecklistLine, StringComparison.Ordinal);
 
         var result = RunValidation(WriteTempFile(masterStatus));
 
         Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("Current task step '2E' is missing", result.Output, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains($"Current task step '{currentStep}' is missing", result.Output, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -146,5 +175,77 @@ public sealed class RoadmapStatusGuardrailTests
         }
 
         throw new FileNotFoundException($"Unable to resolve '{relativePath}' from test base directory.");
+    }
+
+    private static string ReadMasterStatus()
+    {
+        return File.ReadAllText(ResolveRepoPath("docs/MASTER_STATUS.md"));
+    }
+
+    private static string ExtractCurrentTaskStep(string masterStatus)
+    {
+        return ExtractStep(masterStatus, CurrentTaskRegex, "Current task");
+    }
+
+    private static string ExtractNextTaskStep(string masterStatus)
+    {
+        return ExtractStep(masterStatus, NextTaskRegex, "Next task");
+    }
+
+    private static string ExtractStep(string masterStatus, Regex regex, string label)
+    {
+        var match = regex.Match(masterStatus);
+        Assert.True(match.Success, $"Expected {label} line in docs/MASTER_STATUS.md.");
+        return match.Groups["step"].Value;
+    }
+
+    private static string FindTaskLine(string masterStatus, Regex regex, string label)
+    {
+        var match = regex.Match(masterStatus);
+        Assert.True(match.Success, $"Expected {label} line in docs/MASTER_STATUS.md.");
+        return match.Value;
+    }
+
+    private static List<string> CollectRoadmapChecklistStepIdsInOrder(string masterStatus)
+    {
+        var matches = RoadmapChecklistRegex.Matches(masterStatus);
+        Assert.True(matches.Count > 0, "Expected at least one roadmap checklist step in docs/MASTER_STATUS.md.");
+
+        var orderedSteps = new List<string>(matches.Count);
+        foreach (Match match in matches)
+        {
+            orderedSteps.Add(match.Groups["step"].Value);
+        }
+
+        return orderedSteps;
+    }
+
+    private static string FindRoadmapChecklistLineForStep(string masterStatus, string step)
+    {
+        foreach (Match match in RoadmapChecklistRegex.Matches(masterStatus))
+        {
+            if (string.Equals(match.Groups["step"].Value, step, StringComparison.Ordinal))
+            {
+                return match.Value;
+            }
+        }
+
+        throw new InvalidOperationException($"Could not find roadmap checklist line for step '{step}'.");
+    }
+
+    private static string DetermineInvalidRoadmapStepToken(string masterStatus)
+    {
+        var roadmapSteps = CollectRoadmapChecklistStepIdsInOrder(masterStatus);
+        var candidates = new[] { "0Z", "9Z", "99Z" };
+
+        foreach (var candidate in candidates)
+        {
+            if (!roadmapSteps.Contains(candidate, StringComparer.Ordinal))
+            {
+                return candidate;
+            }
+        }
+
+        throw new InvalidOperationException("Unable to construct an invalid roadmap step token.");
     }
 }
