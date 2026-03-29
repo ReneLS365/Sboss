@@ -3,8 +3,8 @@
 ## Current Position
 - Current phase: **Phase 2 — Core Gameplay Validation**
 - Completed phase: **Phase 1 — Authoritative Core Domain**
-- Current task: **2D — Scoring Engine**
-- Next task: **2E — Scaffold Assembly Rules**
+- Current task: **2E — Scaffold Assembly Rules**
+- Next task: **2F — Vertical Slice Test**
 
 ---
 
@@ -34,7 +34,7 @@ Fokus: Det faktiske spil. Implementering af event-baseret Command Queue og Clien
 - [x] 2A Command Validation Queue: Server-side modtagelse og lynhurtig validering af diskrete bygge-actions (placér, fjern).
 - [x] 2B Unity Isometrisk "Sjakbajs" Shell: Implementering af isometrisk 3D-kamera, drag-and-drop interaktion og mobiloptimeret UI-bundbar.
 - [x] 2C Client-Side Prediction: Tillad Unity at placere dele øjeblikkeligt lokalt, mens server godkender asynkront. Rollback ved server-afvisning.
-- [ ] 2D Scoring Engine: Server-autoritativ beregning af stabilitet, combo-multiplier og tid.
+- [x] 2D Scoring Engine: Server-autoritativ beregning af stabilitet, combo-multiplier og tid.
 - [ ] 2E Scaffold Assembly Rules: Definer geometrisk logik for forbindelser (Blå ramme -> Gult dæk -> Rød diagonal).
 - [ ] 2F Vertical Slice Test: Spil én komplet runde fra opgaveaflæsning til server-valideret score.
 
