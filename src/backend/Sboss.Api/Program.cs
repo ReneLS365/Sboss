@@ -8,6 +8,7 @@ using Sboss.Contracts.LevelSeeds;
 using Sboss.Contracts.Seasons;
 using Sboss.Contracts.ContractJobs;
 using Sboss.Contracts.ContractJobApplications;
+using Sboss.Contracts.Yard;
 using Sboss.Domain.Entities;
 using Sboss.Infrastructure;
 using Sboss.Infrastructure.Repositories;
@@ -52,6 +53,8 @@ app.MapPost("/api/v1/match-results", async (
     ICommandValidationQueue commandValidationQueue,
     IAuthoritativeYardCapacityProvider yardCapacityProvider,
     IAuthoritativeComponentCapacityProvider componentCapacityProvider,
+    IYardRepository yardRepository,
+    IAuthoritativeComponentCatalog componentCatalog,
     IScoringEngine scoringEngine,
     IMatchResultValidationService validator,
     ConcurrentDictionary<Guid, SemaphoreSlim> locks,
@@ -106,7 +109,18 @@ app.MapPost("/api/v1/match-results", async (
         });
     }
 
+    var supportedComponents = componentCatalog.GetSupportedComponents();
+    var snapshot = await yardRepository.GetSnapshotAsync(request.AccountId, supportedComponents, cancellationToken);
+    if (snapshot is null)
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["accountId"] = new[] { "Account does not exist." }
+        });
+    }
+
     var remainingCapacityForSequence = await yardCapacityProvider.GetRemainingCapacityAsync(request.LevelSeedId, cancellationToken);
+    var inventoryRemainingByItem = new Dictionary<string, int>(snapshot.InventoryQuantities, StringComparer.OrdinalIgnoreCase);
     var validationResults = new List<CommandValidationResult>(request.PlacementIntents.Count);
     var acceptedComponentIdsInSequence = new List<string>(request.PlacementIntents.Count);
     foreach (var intent in request.PlacementIntents)
@@ -117,18 +131,45 @@ app.MapPost("/api/v1/match-results", async (
             acceptedComponentIdsInSequence,
             cancellationToken);
 
-        if (validation.Accepted && remainingCapacityForSequence.HasValue)
+        if (validation.Accepted)
         {
-            var requiredCapacity = await componentCapacityProvider.GetRequiredCapacityAsync(intent.ComponentId, cancellationToken);
-            if (!requiredCapacity.HasValue || requiredCapacity.Value > remainingCapacityForSequence.Value)
+            if (remainingCapacityForSequence.HasValue)
+            {
+                var requiredCapacity = await componentCapacityProvider.GetRequiredCapacityAsync(intent.ComponentId, cancellationToken);
+                if (!requiredCapacity.HasValue || requiredCapacity.Value > remainingCapacityForSequence.Value)
+                {
+                    validation = CommandValidationResult.Reject(
+                        "yard_capacity_exceeded",
+                        "Required capacity exceeds remaining yard capacity for this placement sequence.");
+                }
+                else
+                {
+                    remainingCapacityForSequence -= requiredCapacity.Value;
+                }
+            }
+        }
+
+        if (validation.Accepted)
+        {
+            if (!componentCatalog.TryGetComponent(intent.ComponentId, out var component))
             {
                 validation = CommandValidationResult.Reject(
-                    "yard_capacity_exceeded",
-                    "Required capacity exceeds remaining yard capacity for this placement sequence.");
+                    "unknown_component_id",
+                    $"ComponentId '{intent.ComponentId}' does not exist.");
             }
             else
             {
-                remainingCapacityForSequence -= requiredCapacity.Value;
+                var currentlyOwned = inventoryRemainingByItem.TryGetValue(component.ItemCode, out var quantity) ? quantity : 0;
+                if (currentlyOwned <= 0)
+                {
+                    validation = CommandValidationResult.Reject(
+                        "inventory_insufficient",
+                        $"Component '{component.ItemCode}' is not available in owned inventory.");
+                }
+                else
+                {
+                    inventoryRemainingByItem[component.ItemCode] = currentlyOwned - 1;
+                }
             }
         }
 
@@ -188,6 +229,104 @@ app.MapPost("/api/v1/match-results", async (
     {
         gate.Release();
     }
+});
+
+app.MapGet("/api/v1/yard/{accountId:guid}", async (
+    Guid accountId,
+    IYardRepository yardRepository,
+    IAuthoritativeComponentCatalog componentCatalog,
+    CancellationToken cancellationToken) =>
+{
+    var supportedComponents = componentCatalog.GetSupportedComponents();
+    var snapshot = await yardRepository.GetSnapshotAsync(accountId, supportedComponents, cancellationToken);
+    if (snapshot is null)
+    {
+        return Results.NotFound(new { error = "Account does not exist." });
+    }
+
+    var inventory = supportedComponents
+        .OrderBy(component => component.ItemCode, StringComparer.OrdinalIgnoreCase)
+        .Select(component => new YardInventoryItemResponse(
+            component.ItemCode,
+            snapshot.InventoryQuantities.TryGetValue(component.ItemCode, out var quantity) ? quantity : 0,
+            component.UnitCapacity,
+            component.PurchaseCost))
+        .ToArray();
+
+    return Results.Ok(new GetYardStateResponse(
+        snapshot.AccountId,
+        snapshot.MaxCapacity,
+        snapshot.UsedCapacity,
+        snapshot.RemainingCapacity,
+        snapshot.CoinBalance,
+        inventory));
+});
+
+app.MapPost("/api/v1/yard/{accountId:guid}/purchases", async (
+    Guid accountId,
+    PostYardPurchaseRequest request,
+    IYardRepository yardRepository,
+    IAuthoritativeComponentCatalog componentCatalog,
+    CancellationToken cancellationToken) =>
+{
+    if (request.Quantity <= 0)
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["quantity"] = new[] { "Quantity must be greater than zero." }
+        });
+    }
+
+    if (string.IsNullOrWhiteSpace(request.ItemCode))
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["itemCode"] = new[] { "ItemCode is required." }
+        });
+    }
+
+    if (!componentCatalog.TryGetComponent(request.ItemCode, out var component))
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["itemCode"] = new[] { $"Unknown itemCode '{request.ItemCode}'." }
+        });
+    }
+
+    var maxSafeCapacityQuantity = int.MaxValue / component.UnitCapacity;
+    if (request.Quantity > maxSafeCapacityQuantity)
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["quantity"] = new[] { "Quantity is too large for safe capacity calculation." }
+        });
+    }
+
+    var supportedComponents = componentCatalog.GetSupportedComponents();
+    var result = await yardRepository.PurchaseAsync(accountId, component, request.Quantity, supportedComponents, cancellationToken);
+    if (!result.Success)
+    {
+        return result.FailureCode switch
+        {
+            "missing_account" => Results.NotFound(new { error = result.FailureMessage }),
+            "insufficient_funds" => Results.BadRequest(new { error = result.FailureMessage }),
+            "capacity_overflow" => Results.BadRequest(new { error = result.FailureMessage }),
+            _ => Results.BadRequest(new { error = result.FailureMessage ?? "Purchase failed." })
+        };
+    }
+
+    var snapshot = result.Snapshot!;
+    return Results.Ok(new PostYardPurchaseResponse(
+        snapshot.AccountId,
+        component.ItemCode,
+        request.Quantity,
+        component.PurchaseCost,
+        component.PurchaseCost * request.Quantity,
+        snapshot.CoinBalance,
+        snapshot.MaxCapacity,
+        snapshot.UsedCapacity,
+        snapshot.RemainingCapacity,
+        result.OwnedQuantity));
 });
 
 app.MapPost("/api/v1/economy/transactions", async (

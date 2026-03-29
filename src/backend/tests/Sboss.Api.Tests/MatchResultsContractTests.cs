@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
+using Npgsql;
 using Sboss.Contracts.Commands;
 using Sboss.Contracts.MatchResults;
 
@@ -11,9 +12,11 @@ namespace Sboss.Api.Tests;
 public sealed class MatchResultsContractTests
 {
     private readonly TestWebApplicationFactory _factory;
+    private readonly PostgresDatabaseFixture _database;
 
     public MatchResultsContractTests(PostgresDatabaseFixture database)
     {
+        _database = database;
         _factory = new TestWebApplicationFactory(database.ConnectionString);
     }
 
@@ -196,6 +199,57 @@ public sealed class MatchResultsContractTests
         Assert.Equal(new[] { false, true, false }, result.ValidationResults.Select(r => r.Accepted).ToArray());
         Assert.Equal("scaffold_assembly_invalid_sequence", result.ValidationResults[0].Code);
         Assert.Equal("scaffold_assembly_invalid_sequence", result.ValidationResults[2].Code);
+    }
+
+    [Fact]
+    public async Task PostMatchResult_RejectsPlacementsWhenOwnedInventoryIsInsufficient()
+    {
+        var accountId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        await SetInventoryQuantityAsync(accountId, "scaffold_blue_frame", 0);
+
+        try
+        {
+            var client = _factory.CreateClient();
+            var seedId = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
+            var request = new PostMatchResultRequest(
+                accountId,
+                Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc"),
+                seedId,
+                CreatePlacementIntents(seedId, "scaffold_blue_frame"),
+                null);
+
+            var response = await client.PostAsJsonAsync("/api/v1/match-results", request);
+            Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+            var result = await response.Content.ReadFromJsonAsync<PostMatchResultResponse>();
+            Assert.NotNull(result);
+            Assert.Single(result!.ValidationResults);
+            Assert.False(result.ValidationResults[0].Accepted);
+            Assert.Equal("inventory_insufficient", result.ValidationResults[0].Code);
+        }
+        finally
+        {
+            await SetInventoryQuantityAsync(accountId, "scaffold_blue_frame", 3);
+        }
+    }
+
+    private async Task SetInventoryQuantityAsync(Guid accountId, string itemCode, int quantity)
+    {
+        await using var connection = new NpgsqlConnection(_database.ConnectionString);
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE inventory_items
+            SET quantity = @quantity,
+                updated_at = NOW(),
+                version = version + 1
+            WHERE account_id = @accountId
+              AND item_code = @itemCode;
+            """;
+        command.Parameters.AddWithValue("accountId", accountId);
+        command.Parameters.AddWithValue("itemCode", itemCode);
+        command.Parameters.AddWithValue("quantity", quantity);
+        await command.ExecuteNonQueryAsync();
     }
 
     private static IReadOnlyList<PlaceComponentIntent> CreatePlacementIntents(Guid seedId, params string[] componentIds)

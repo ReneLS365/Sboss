@@ -18,6 +18,18 @@ INSERT INTO inventory_items (inventory_item_id, account_id, item_code, quantity,
 VALUES ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'starter_token', 1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 1)
 ON CONFLICT (inventory_item_id) DO NOTHING;
 
+INSERT INTO inventory_items (inventory_item_id, account_id, item_code, quantity, created_at, updated_at, version)
+VALUES ('11111111-1111-1111-1111-111111111111', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'scaffold_blue_frame', 3, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 1)
+ON CONFLICT (inventory_item_id) DO NOTHING;
+
+INSERT INTO inventory_items (inventory_item_id, account_id, item_code, quantity, created_at, updated_at, version)
+VALUES ('22222222-2222-2222-2222-222222222222', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'scaffold_yellow_deck', 1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 1)
+ON CONFLICT (inventory_item_id) DO NOTHING;
+
+INSERT INTO yard_states (account_id, max_capacity, created_at, updated_at, version)
+VALUES ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 1500, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 1)
+ON CONFLICT (account_id) DO NOTHING;
+
 INSERT INTO cosmetic_unlocks (cosmetic_unlock_id, account_id, cosmetic_code, unlocked_at, created_at, updated_at, version)
 VALUES ('ffffffff-ffff-ffff-ffff-ffffffffffff', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'base_cap', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 1)
 ON CONFLICT (cosmetic_unlock_id) DO NOTHING;
