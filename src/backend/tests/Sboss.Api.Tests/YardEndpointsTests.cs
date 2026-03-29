@@ -138,7 +138,7 @@ public sealed class YardEndpointsTests
     public async Task Purchase_SerializesCapacityChecksPerAccountUnderConcurrency()
     {
         await _database.ResetAsync();
-        await SetYardCapacityAsync(AccountId, 10);
+        await SetYardCapacityAsync(AccountId, 11);
         using var factory = new TestWebApplicationFactory(_database.ConnectionString);
         using var client = factory.CreateClient();
 
@@ -157,9 +157,9 @@ public sealed class YardEndpointsTests
 
         var yard = await client.GetFromJsonAsync<GetYardStateResponse>($"/api/v1/yard/{AccountId}");
         Assert.NotNull(yard);
-        Assert.Equal(10, yard!.MaxCapacity);
+        Assert.Equal(11, yard!.MaxCapacity);
         Assert.Equal(4, yard.Inventory.Single(item => item.ItemCode == "scaffold_blue_frame").Quantity);
-        Assert.Equal(10, yard.UsedCapacity);
+        Assert.Equal(11, yard.UsedCapacity);
         Assert.Equal(0, yard.RemainingCapacity);
     }
 
