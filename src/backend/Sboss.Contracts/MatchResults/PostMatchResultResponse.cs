@@ -1,3 +1,5 @@
+using Sboss.Contracts.Commands;
+
 namespace Sboss.Contracts.MatchResults;
 
 public sealed record PostMatchResultResponse(
@@ -6,6 +8,7 @@ public sealed record PostMatchResultResponse(
     int ComboMax,
     int StabilityPercent,
     int Penalties,
+    IReadOnlyList<CommandValidationResult> ValidationResults,
     string ValidationStatus,
     DateTimeOffset CreatedAt,
     long Version);

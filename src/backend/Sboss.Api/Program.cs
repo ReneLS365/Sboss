@@ -179,6 +179,7 @@ app.MapPost("/api/v1/match-results", async (
                 saved.ComboMax,
                 scoring.StabilityPercent,
                 saved.Penalties,
+                validationResults,
                 saved.ValidationStatus.ToString().ToLowerInvariant(),
                 saved.CreatedAt,
                 saved.Version));

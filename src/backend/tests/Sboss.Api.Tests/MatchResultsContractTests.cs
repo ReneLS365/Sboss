@@ -37,6 +37,8 @@ public sealed class MatchResultsContractTests
         Assert.True(payload.Score > 0);
         Assert.True(payload.ComboMax > 0);
         Assert.True(payload.StabilityPercent > 0);
+        Assert.Equal(3, payload.ValidationResults.Count);
+        Assert.All(payload.ValidationResults, result => Assert.True(result.Accepted));
         Assert.Equal(2, payload.Version);
     }
 
@@ -89,6 +91,7 @@ public sealed class MatchResultsContractTests
         var payload = await response.Content.ReadFromJsonAsync<PostMatchResultResponse>();
         Assert.NotNull(payload);
         Assert.NotEqual(request.ReportedScore, payload!.Score);
+        Assert.All(payload.ValidationResults, result => Assert.True(result.Accepted));
     }
 
     [Fact]
@@ -117,6 +120,7 @@ public sealed class MatchResultsContractTests
         Assert.Equal(firstPayload.ComboMax, secondPayload.ComboMax);
         Assert.Equal(firstPayload.StabilityPercent, secondPayload.StabilityPercent);
         Assert.Equal(firstPayload.Penalties, secondPayload.Penalties);
+        Assert.Equal(firstPayload.ValidationResults, secondPayload.ValidationResults);
     }
 
     [Fact]
@@ -161,6 +165,9 @@ public sealed class MatchResultsContractTests
         Assert.Equal(2, result!.ComboMax);
         Assert.Equal(1, result.Penalties);
         Assert.Equal(67, result.StabilityPercent);
+        Assert.Equal(3, result.ValidationResults.Count);
+        Assert.Equal(new[] { true, true, false }, result.ValidationResults.Select(r => r.Accepted).ToArray());
+        Assert.Equal("yard_capacity_exceeded", result.ValidationResults[^1].Code);
     }
 
     [Fact]
@@ -183,6 +190,9 @@ public sealed class MatchResultsContractTests
         Assert.Equal(2, result!.Penalties);
         Assert.Equal(33, result.StabilityPercent);
         Assert.Equal(1, result.ComboMax);
+        Assert.Equal(new[] { false, true, false }, result.ValidationResults.Select(r => r.Accepted).ToArray());
+        Assert.Equal("scaffold_assembly_invalid_sequence", result.ValidationResults[0].Code);
+        Assert.Equal("scaffold_assembly_invalid_sequence", result.ValidationResults[2].Code);
     }
 
     private static IReadOnlyList<PlaceComponentIntent> CreatePlacementIntents(Guid seedId, params string[] componentIds)
