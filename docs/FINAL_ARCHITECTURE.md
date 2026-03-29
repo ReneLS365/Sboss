@@ -24,3 +24,10 @@
 - This document is an architecture lock, not a Phase 0 execution freeze.
 - Work must follow `docs/MASTER_STATUS.md` for the active roadmap phase and next task.
 - The server-authoritative trust boundary remains mandatory for all phases.
+
+
+## Future Expansion Boundary
+- Lean MVP phases remain HTTP/API and backend-authoritative by default.
+- A future real-time session layer may be introduced only through explicit roadmap tasks after MVP phases are complete.
+- Any future live-session runtime must still keep backend + PostgreSQL as authoritative owners of progression, economy, inventory, scoring, anti-cheat, and persisted outcomes.
+- Transport selection for future real-time work is intentionally deferred to roadmap tasking; it is not pre-locked to UDP, WebSocket, QUIC, or any single protocol in this document.
