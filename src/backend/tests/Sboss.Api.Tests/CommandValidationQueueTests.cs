@@ -19,6 +19,7 @@ public sealed class CommandValidationQueueTests
             $$"""
             {"SeedId":"{{KnownSeedId}}","Timestamp":"2026-03-27T00:00:00Z","ComponentId":"scaffold_blue_frame"}
             """,
+            Array.Empty<string>(),
             CancellationToken.None);
 
         Assert.True(result.Accepted);
@@ -36,6 +37,7 @@ public sealed class CommandValidationQueueTests
             $$"""
             {"SeedId":"{{KnownSeedId}}","Timestamp":"2026-03-27T00:00:00Z","ComponentId":"scaffold_yellow_deck"}
             """,
+            new[] { "scaffold_blue_frame" },
             CancellationToken.None);
 
         Assert.True(result.Accepted);
@@ -53,6 +55,7 @@ public sealed class CommandValidationQueueTests
             $$"""
             {"SeedId":"{{KnownSeedId}}","Timestamp":"2026-03-27T00:00:00Z","ComponentId":"scaffold_red_diagonal"}
             """,
+            new[] { "scaffold_blue_frame", "scaffold_yellow_deck" },
             CancellationToken.None);
 
         Assert.False(result.Accepted);
@@ -69,6 +72,7 @@ public sealed class CommandValidationQueueTests
             $$"""
             {"SeedId":"{{KnownSeedId}}","Timestamp":"2026-03-27T00:00:00Z","ComponentId":"unknown_component"}
             """,
+            Array.Empty<string>(),
             CancellationToken.None);
 
         Assert.False(result.Accepted);
@@ -85,6 +89,7 @@ public sealed class CommandValidationQueueTests
             """
             {"SeedId":"99999999-9999-9999-9999-999999999999","Timestamp":"2026-03-27T00:00:00Z","ComponentId":"scaffold_blue_frame"}
             """,
+            Array.Empty<string>(),
             CancellationToken.None);
 
         Assert.False(result.Accepted);
@@ -100,6 +105,7 @@ public sealed class CommandValidationQueueTests
             """
             {"SeedId":"dddddddd-dddd-dddd-dddd-dddddddddddd","Timestamp":"2026-03-27T00:00:00Z"
             """,
+            Array.Empty<string>(),
             CancellationToken.None);
 
         Assert.False(result.Accepted);
@@ -115,6 +121,7 @@ public sealed class CommandValidationQueueTests
             """
             {"SeedId":"dddddddd-dddd-dddd-dddd-dddddddddddd","Timestamp":"2026-03-27T00:00:00Z"}
             """,
+            Array.Empty<string>(),
             CancellationToken.None);
 
         Assert.False(result.Accepted);
@@ -132,12 +139,14 @@ public sealed class CommandValidationQueueTests
             $$"""
             {"SeedId":"{{KnownSeedId}}","Timestamp":"2020-01-01T00:00:00Z","ComponentId":"scaffold_red_diagonal"}
             """,
+            new[] { "scaffold_blue_frame", "scaffold_yellow_deck" },
             CancellationToken.None);
 
         var futureTimestampResult = await queue.ValidatePlaceComponentIntentAsync(
             $$"""
             {"SeedId":"{{KnownSeedId}}","Timestamp":"2036-01-01T00:00:00Z","ComponentId":"scaffold_red_diagonal"}
             """,
+            new[] { "scaffold_blue_frame", "scaffold_yellow_deck" },
             CancellationToken.None);
 
         Assert.False(oldTimestampResult.Accepted);
@@ -146,10 +155,47 @@ public sealed class CommandValidationQueueTests
         Assert.Equal("yard_capacity_exceeded", futureTimestampResult.Code);
     }
 
+    [Fact]
+    public async Task ValidatePlaceComponentIntent_RejectsDeckWithoutPriorFrame()
+    {
+        var queue = CreateQueue();
+        _yardCapacityProvider.CapacityBySeedId[KnownSeedId] = 10;
+        _componentCapacityProvider.CapacityByComponentId["scaffold_yellow_deck"] = 3;
+
+        var result = await queue.ValidatePlaceComponentIntentAsync(
+            $$"""
+            {"SeedId":"{{KnownSeedId}}","Timestamp":"2026-03-27T00:00:00Z","ComponentId":"scaffold_yellow_deck"}
+            """,
+            Array.Empty<string>(),
+            CancellationToken.None);
+
+        Assert.False(result.Accepted);
+        Assert.Equal("scaffold_assembly_invalid_sequence", result.Code);
+    }
+
+    [Fact]
+    public async Task ValidatePlaceComponentIntent_RejectsDiagonalWithoutRequiredPriorStructure()
+    {
+        var queue = CreateQueue();
+        _yardCapacityProvider.CapacityBySeedId[KnownSeedId] = 10;
+        _componentCapacityProvider.CapacityByComponentId["scaffold_red_diagonal"] = 5;
+
+        var result = await queue.ValidatePlaceComponentIntentAsync(
+            $$"""
+            {"SeedId":"{{KnownSeedId}}","Timestamp":"2026-03-27T00:00:00Z","ComponentId":"scaffold_red_diagonal"}
+            """,
+            new[] { "scaffold_blue_frame" },
+            CancellationToken.None);
+
+        Assert.False(result.Accepted);
+        Assert.Equal("scaffold_assembly_invalid_sequence", result.Code);
+    }
+
     private ICommandValidationQueue CreateQueue()
     {
         var validator = new YardCapacityValidator(_yardCapacityProvider, _componentCapacityProvider);
-        return new CommandValidationQueue(validator);
+        var scaffoldAssemblyRulesValidator = new ScaffoldAssemblyRulesValidator();
+        return new CommandValidationQueue(validator, scaffoldAssemblyRulesValidator);
     }
 
     private sealed class FakeYardCapacityProvider : IAuthoritativeYardCapacityProvider

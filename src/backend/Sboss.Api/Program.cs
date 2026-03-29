@@ -108,10 +108,14 @@ app.MapPost("/api/v1/match-results", async (
 
     var remainingCapacityForSequence = await yardCapacityProvider.GetRemainingCapacityAsync(request.LevelSeedId, cancellationToken);
     var validationResults = new List<CommandValidationResult>(request.PlacementIntents.Count);
+    var acceptedComponentIdsInSequence = new List<string>(request.PlacementIntents.Count);
     foreach (var intent in request.PlacementIntents)
     {
         var rawIntentJson = JsonSerializer.Serialize(intent);
-        var validation = await commandValidationQueue.ValidatePlaceComponentIntentAsync(rawIntentJson, cancellationToken);
+        var validation = await commandValidationQueue.ValidatePlaceComponentIntentAsync(
+            rawIntentJson,
+            acceptedComponentIdsInSequence,
+            cancellationToken);
 
         if (validation.Accepted && remainingCapacityForSequence.HasValue)
         {
@@ -126,6 +130,11 @@ app.MapPost("/api/v1/match-results", async (
             {
                 remainingCapacityForSequence -= requiredCapacity.Value;
             }
+        }
+
+        if (validation.Accepted)
+        {
+            acceptedComponentIdsInSequence.Add(intent.ComponentId);
         }
 
         validationResults.Add(validation);
