@@ -19,8 +19,8 @@ public sealed class RoadmapStatusGuardrailTests
     {
         var masterStatus = File.ReadAllText(ResolveRepoPath("docs/MASTER_STATUS.md"));
         masterStatus = masterStatus.Replace(
-            "- Next task: **2E — Scaffold Assembly Rules**",
             "- Next task: **2F — Vertical Slice Test**",
+            "- Next task: **3A — Yard Capacity & Inventory**",
             StringComparison.Ordinal);
 
         var result = RunValidation(WriteTempFile(masterStatus));
@@ -34,14 +34,14 @@ public sealed class RoadmapStatusGuardrailTests
     {
         var masterStatus = File.ReadAllText(ResolveRepoPath("docs/MASTER_STATUS.md"));
         masterStatus = masterStatus.Replace(
-            "- [ ] 2D Scoring Engine: Server-autoritativ beregning af stabilitet, combo-multiplier og tid.",
-            "- [ ] 2Z Scoring Engine: Server-autoritativ beregning af stabilitet, combo-multiplier og tid.",
+            "- [ ] 2E Scaffold Assembly Rules: Definer geometrisk logik for forbindelser (Blå ramme -> Gult dæk -> Rød diagonal).",
+            "- [ ] 2Z Scaffold Assembly Rules: Definer geometrisk logik for forbindelser (Blå ramme -> Gult dæk -> Rød diagonal).",
             StringComparison.Ordinal);
 
         var result = RunValidation(WriteTempFile(masterStatus));
 
         Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("Current task step '2D' is missing", result.Output, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Current task step '2E' is missing", result.Output, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
