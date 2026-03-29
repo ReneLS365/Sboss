@@ -24,6 +24,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IContractJobApplicationRepository, PostgresContractJobApplicationRepository>();
         services.AddScoped<IYardRepository, PostgresYardRepository>();
         services.AddScoped<IEconomyTransactionService, EconomyTransactionService>();
+        services.AddScoped<ICrewService, CrewService>();
         services.AddScoped<IContractJobTransitionService, ContractJobTransitionService>();
         services.AddScoped<IContractJobApplicationService, ContractJobApplicationService>();
         services.AddScoped<ICommandValidationQueue, CommandValidationQueue>();

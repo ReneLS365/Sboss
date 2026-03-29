@@ -1,4 +1,5 @@
 using System.Data;
+using System.Linq;
 using Npgsql;
 using Sboss.Domain.Entities;
 
@@ -17,11 +18,104 @@ public sealed class EconomyTransactionService : IEconomyTransactionService
     public async Task<EconomyTransactionResult> ApplyAsync(EconomyMutationRequest request, CancellationToken cancellationToken)
     {
         var normalizedRequest = NormalizeRequest(request);
-        var timestamp = DateTimeOffset.UtcNow;
 
         await using var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
 
+        try
+        {
+            var result = await ApplyInTransactionAsync(
+                connection,
+                transaction,
+                normalizedRequest,
+                cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return result;
+        }
+        catch (PostgresException exception) when (exception.SqlState == UniqueViolationSqlState)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+
+            await using var replayConnection = await _dataSource.OpenConnectionAsync(cancellationToken);
+            await using var replayTransaction = await replayConnection.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
+
+            var replayTransactionRecord = await GetTransactionByIdempotencyKeyAsync(
+                replayConnection,
+                replayTransaction,
+                normalizedRequest.AccountId,
+                normalizedRequest.IdempotencyKey,
+                cancellationToken);
+
+            if (replayTransactionRecord is null)
+            {
+                throw;
+            }
+
+            EnsureReplayIntentMatches(normalizedRequest, replayTransactionRecord);
+            await replayTransaction.CommitAsync(cancellationToken);
+            return new EconomyTransactionResult(replayTransactionRecord, CreateReplayBalanceSnapshot(replayTransactionRecord), true);
+        }
+    }
+
+    public async Task<IReadOnlyList<EconomyTransactionResult>> ApplyBatchAsync(
+        IReadOnlyList<EconomyMutationRequest> requests,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(requests);
+        if (requests.Count == 0)
+        {
+            throw new EconomyTransactionServiceException(EconomyTransactionFailureReason.InvalidRequest, "At least one request is required.");
+        }
+
+        var normalizedRequests = requests.Select(NormalizeRequest).ToArray();
+
+        await using var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
+
+        var results = new List<EconomyTransactionResult>(normalizedRequests.Length);
+        foreach (var normalizedRequest in normalizedRequests)
+        {
+            var result = await ApplyInTransactionAsync(connection, transaction, normalizedRequest, cancellationToken);
+            results.Add(result);
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+        return results;
+    }
+
+    private static EconomyMutationRequest NormalizeRequest(EconomyMutationRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (request.AccountId == Guid.Empty)
+        {
+            throw new EconomyTransactionServiceException(EconomyTransactionFailureReason.InvalidRequest, "Account ID is required.");
+        }
+
+        var currencyCode = NormalizeCurrencyCode(request.CurrencyCode);
+        var idempotencyKey = NormalizeTrimmedValue(request.IdempotencyKey, nameof(request.IdempotencyKey), "Idempotency key");
+        var reason = NormalizeTrimmedValue(request.Reason, nameof(request.Reason), "Reason");
+
+        if (request.AmountDelta == 0)
+        {
+            throw new EconomyTransactionServiceException(EconomyTransactionFailureReason.InvalidRequest, "Amount delta must not be zero.");
+        }
+
+        return request with
+        {
+            CurrencyCode = currencyCode,
+            IdempotencyKey = idempotencyKey,
+            Reason = reason
+        };
+    }
+
+    private static async Task<EconomyTransactionResult> ApplyInTransactionAsync(
+        NpgsqlConnection connection,
+        NpgsqlTransaction transaction,
+        EconomyMutationRequest normalizedRequest,
+        CancellationToken cancellationToken)
+    {
+        var timestamp = DateTimeOffset.UtcNow;
         var existingTransaction = await GetTransactionByIdempotencyKeyAsync(
             connection,
             transaction,
@@ -32,7 +126,6 @@ public sealed class EconomyTransactionService : IEconomyTransactionService
         if (existingTransaction is not null)
         {
             EnsureReplayIntentMatches(normalizedRequest, existingTransaction);
-            await transaction.CommitAsync(cancellationToken);
             return new EconomyTransactionResult(existingTransaction, CreateReplayBalanceSnapshot(existingTransaction), true);
         }
 
@@ -71,69 +164,15 @@ public sealed class EconomyTransactionService : IEconomyTransactionService
             timestamp,
             cancellationToken);
 
-        EconomyTransaction savedTransaction;
-        try
-        {
-            savedTransaction = await InsertTransactionAsync(
-                connection,
-                transaction,
-                normalizedRequest,
-                updatedBalance,
-                timestamp,
-                cancellationToken);
-        }
-        catch (PostgresException exception) when (exception.SqlState == UniqueViolationSqlState)
-        {
-            await transaction.RollbackAsync(cancellationToken);
+        var savedTransaction = await InsertTransactionAsync(
+            connection,
+            transaction,
+            normalizedRequest,
+            updatedBalance,
+            timestamp,
+            cancellationToken);
 
-            await using var replayConnection = await _dataSource.OpenConnectionAsync(cancellationToken);
-            await using var replayTransaction = await replayConnection.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
-
-            var replayTransactionRecord = await GetTransactionByIdempotencyKeyAsync(
-                replayConnection,
-                replayTransaction,
-                normalizedRequest.AccountId,
-                normalizedRequest.IdempotencyKey,
-                cancellationToken);
-
-            if (replayTransactionRecord is null)
-            {
-                throw;
-            }
-
-            EnsureReplayIntentMatches(normalizedRequest, replayTransactionRecord);
-            await replayTransaction.CommitAsync(cancellationToken);
-            return new EconomyTransactionResult(replayTransactionRecord, CreateReplayBalanceSnapshot(replayTransactionRecord), true);
-        }
-
-        await transaction.CommitAsync(cancellationToken);
         return new EconomyTransactionResult(savedTransaction, updatedBalance, false);
-    }
-
-    private static EconomyMutationRequest NormalizeRequest(EconomyMutationRequest request)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-
-        if (request.AccountId == Guid.Empty)
-        {
-            throw new EconomyTransactionServiceException(EconomyTransactionFailureReason.InvalidRequest, "Account ID is required.");
-        }
-
-        var currencyCode = NormalizeCurrencyCode(request.CurrencyCode);
-        var idempotencyKey = NormalizeTrimmedValue(request.IdempotencyKey, nameof(request.IdempotencyKey), "Idempotency key");
-        var reason = NormalizeTrimmedValue(request.Reason, nameof(request.Reason), "Reason");
-
-        if (request.AmountDelta == 0)
-        {
-            throw new EconomyTransactionServiceException(EconomyTransactionFailureReason.InvalidRequest, "Amount delta must not be zero.");
-        }
-
-        return request with
-        {
-            CurrencyCode = currencyCode,
-            IdempotencyKey = idempotencyKey,
-            Reason = reason
-        };
     }
 
     private static string NormalizeCurrencyCode(string currencyCode)
