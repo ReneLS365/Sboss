@@ -19,3 +19,9 @@
 - Status: Accepted
 - Decision: Use concise workflow labels only.
 - Consequence: Avoid label sprawl and phase creep.
+
+
+## ADR-0005 Future Real-Time Expansion Boundary
+- Status: Accepted
+- Decision: Treat real-time simulation as a post-MVP expansion phase, not as an implicit rewrite of the Lean MVP execution model.
+- Consequence: Current roadmap phases keep their existing server-authoritative API-driven design, while any future live-session runtime must be introduced through explicit roadmap tasks and preserve backend authority.

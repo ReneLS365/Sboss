@@ -5,6 +5,7 @@
 - Completed phase: **Phase 2 — Core Gameplay Validation**
 - Current task: **3B — Akkord & Crew Split**
 - Next task: **3C — Wear & Tear System**
+- Future expansion phase: **Phase 6 — Real-Time Simulation Expansion**
 
 ---
 
@@ -14,6 +15,7 @@
 - [ ] Phase 3 — Company & Meta-loop (Yard Inventory, Akkord-system, XP)
 - [ ] Phase 4 — Asynchronous Competition (Leaderboards, Daily Challenges, Ghost Data)
 - [ ] Phase 5 — Release Prep (Anti-cheat, QA, Deployment)
+- [ ] Phase 6 — Real-Time Simulation Expansion (Live Session Runtime, Transport, Replication)
 
 ---
 
@@ -61,3 +63,12 @@ Fokus: Stabilitet, on-boarding og lancering.
 - [ ] 5C Load & Stress Test: Test database-concurrency under Daily Challenge peaks.
 - [ ] 5D MVP Scope Lock & QA: Frys features, udfør QA-pas.
 - [ ] 5E Deployment Pipelines: App Store og Play Store distribution.
+
+
+## Phase 6 — Real-Time Simulation Expansion
+Fokus: Udvid MVP'en med live sessioner og lav-latens simulation uden at bryde server-authoritative grænser.
+- [ ] 6A Real-Time Session Architecture Lock: Definér session-model, tick-politik, transportvalg og persistence-boundary før runtime-kode.
+- [ ] 6B Authoritative Simulation Runtime: Implementér backend-ejet live session runtime for aktive jobs og spiller-intents.
+- [ ] 6C Session Transport & Intent Streaming: Tilføj lav-latens, tovejstransport mellem Unity og backend-sessioner.
+- [ ] 6D Snapshot Replication, Prediction & Reconciliation: Replikér session-state til klienter med prediction, rollback og reconciliation.
+- [ ] 6E Persistence & Meta-loop Bridge: Commit live session-resultater tilbage til kontrakter, inventory, wear/tear, score, ghost data og progression.

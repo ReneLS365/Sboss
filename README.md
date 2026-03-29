@@ -14,6 +14,11 @@ Sboss is bootstrapped as a server-authoritative online game foundation where .NE
 ## Project Status
 Project status, explicit current phase, and next task are tracked in [docs/MASTER_STATUS.md](docs/MASTER_STATUS.md).
 
+## Roadmap Horizon
+- Lean MVP roadmap: Phases 1-5
+- Planned post-MVP expansion: Phase 6 — Real-Time Simulation Expansion
+- Active execution is still gated only by the current phase/task in `docs/MASTER_STATUS.md`
+
 ## Execution Model
 - Roadmap and progress source of truth: [docs/MASTER_STATUS.md](docs/MASTER_STATUS.md)
 - Repository execution and governance workflow: [docs/CODEX_WORKFLOW.md](docs/CODEX_WORKFLOW.md)
