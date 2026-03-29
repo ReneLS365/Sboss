@@ -4,9 +4,10 @@
 Create a backend service that exposes leaderboard standings across global, regional, and crew categories.  The API will allow clients to fetch rankings based on various filters (e.g. top 100 worldwide, crew‑specific leaderboard).  Data must be based on authoritative scores recorded in Phase 2 and Phase 3 activities.
 
 ## Phase Check
-- **Current task:** 4A — Leaderboard API.
-- **Next task:** 4B — Deterministic Level Generator.
-- **Why allowed:** After completing Phase 3, the roadmap moves into Phase 4 (Asynchronous Competition) starting with leaderboards.
+- **Current phase (from `docs/MASTER_STATUS.md`):** Phase 3 — Company & Meta-loop.
+- **Current task (from `docs/MASTER_STATUS.md`):** 3A — Yard Capacity & Inventory.
+- **Task status:** 4A is a **future-phase placeholder** and is **not active** until the roadmap advances to Phase 4.
+- **Why this doc is allowed now:** Documentation-only backlog planning reference; no implementation work is authorized while Phase 3 is active.
 
 ## Scope
 ### In scope
