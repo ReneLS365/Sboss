@@ -182,26 +182,27 @@ public sealed class CrewService : ICrewService
         EnsureOwnerActor(crew, actorAccountId);
         await transaction.CommitAsync(cancellationToken);
 
+        var payoutMutations = new List<EconomyMutationRequest>(split.Members.Count + 1);
         foreach (var member in split.Members)
         {
-            await _economyTransactionService.ApplyAsync(
+            payoutMutations.Add(
                 new EconomyMutationRequest(
                     member.AccountId,
                     normalizedCurrencyCode,
                     member.Amount,
                     $"{normalizedIdempotencyKey}:{member.AccountId:N}",
-                    $"{normalizedReason}:crew:{crewId:N}:member:{member.AccountId:N}"),
-                cancellationToken);
+                    $"{normalizedReason}:crew:{crewId:N}:member:{member.AccountId:N}"));
         }
 
-        await _economyTransactionService.ApplyAsync(
+        payoutMutations.Add(
             new EconomyMutationRequest(
                 crew.OwnerAccountId,
                 normalizedCurrencyCode,
                 split.CompanyShareAmount,
                 $"{normalizedIdempotencyKey}:{crew.OwnerAccountId:N}:company",
-                $"{normalizedReason}:crew:{crewId:N}:company"),
-            cancellationToken);
+                $"{normalizedReason}:crew:{crewId:N}:company"));
+
+        await _economyTransactionService.ApplyBatchAsync(payoutMutations, cancellationToken);
 
         return split;
     }
