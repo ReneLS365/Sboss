@@ -9,6 +9,7 @@ using Sboss.Contracts.Seasons;
 using Sboss.Contracts.ContractJobs;
 using Sboss.Contracts.ContractJobApplications;
 using Sboss.Contracts.Yard;
+using Sboss.Contracts.Crews;
 using Sboss.Domain.Entities;
 using Sboss.Infrastructure;
 using Sboss.Infrastructure.Repositories;
@@ -502,6 +503,179 @@ app.MapPost("/api/v1/contract-jobs/{contractJobId:guid}/applications/{applicatio
     }
 });
 
+app.MapPost("/api/v1/crews", async (
+    PostCreateCrewRequest request,
+    ICrewService service,
+    CancellationToken cancellationToken) =>
+{
+    try
+    {
+        var crew = await service.CreateCrewAsync(request.OwnerAccountId, request.Name, cancellationToken);
+        return Results.Ok(new PostCreateCrewResponse(crew.CrewId, crew.OwnerAccountId, crew.Name, crew.CreatedAt, crew.Version));
+    }
+    catch (CrewServiceException exception) when (exception.Reason == CrewServiceFailureReason.NotFound)
+    {
+        return Results.NotFound(new { error = exception.Message });
+    }
+    catch (CrewServiceException exception) when (exception.Reason == CrewServiceFailureReason.InvalidRequest)
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["crew"] = new[] { exception.Message }
+        });
+    }
+});
+
+app.MapPost("/api/v1/crews/{crewId:guid}/members", async (
+    Guid crewId,
+    PostCrewMemberAssignmentRequest request,
+    ICrewService service,
+    CancellationToken cancellationToken) =>
+{
+    if (!Enum.TryParse<CrewRole>(request.Role, ignoreCase: true, out var role))
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["role"] = new[] { "Crew role is invalid." }
+        });
+    }
+
+    try
+    {
+        var member = await service.AssignMemberAsync(crewId, request.ActorAccountId, request.MemberAccountId, role, cancellationToken);
+        return Results.Ok(new PostCrewMemberAssignmentResponse(member.CrewId, member.AccountId, member.Role.ToString(), member.UpdatedAt, member.Version));
+    }
+    catch (CrewServiceException exception) when (exception.Reason == CrewServiceFailureReason.NotFound)
+    {
+        return Results.NotFound(new { error = exception.Message });
+    }
+    catch (CrewServiceException exception) when (exception.Reason == CrewServiceFailureReason.Forbidden)
+    {
+        return Results.Forbid();
+    }
+    catch (CrewServiceException exception) when (exception.Reason == CrewServiceFailureReason.InvalidRequest)
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["crewMember"] = new[] { exception.Message }
+        });
+    }
+});
+
+app.MapPost("/api/v1/crews/{crewId:guid}/members/{memberAccountId:guid}/remove", async (
+    Guid crewId,
+    Guid memberAccountId,
+    PostCrewMemberRemovalRequest request,
+    ICrewService service,
+    CancellationToken cancellationToken) =>
+{
+    try
+    {
+        await service.RemoveMemberAsync(crewId, request.ActorAccountId, memberAccountId, cancellationToken);
+        return Results.NoContent();
+    }
+    catch (CrewServiceException exception) when (exception.Reason == CrewServiceFailureReason.NotFound)
+    {
+        return Results.NotFound(new { error = exception.Message });
+    }
+    catch (CrewServiceException exception) when (exception.Reason == CrewServiceFailureReason.Forbidden)
+    {
+        return Results.Forbid();
+    }
+    catch (CrewServiceException exception) when (exception.Reason == CrewServiceFailureReason.InvalidRequest)
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["crewMember"] = new[] { exception.Message }
+        });
+    }
+});
+
+app.MapGet("/api/v1/crews/{crewId:guid}/split-preview", async (
+    Guid crewId,
+    long grossAmount,
+    ICrewService service,
+    CancellationToken cancellationToken) =>
+{
+    try
+    {
+        var split = await service.PreviewSplitAsync(crewId, grossAmount, cancellationToken);
+        return Results.Ok(MapCrewSplitPreview(split));
+    }
+    catch (CrewServiceException exception) when (exception.Reason == CrewServiceFailureReason.NotFound)
+    {
+        return Results.NotFound(new { error = exception.Message });
+    }
+    catch (CrewServiceException exception) when (exception.Reason == CrewServiceFailureReason.InvalidRequest)
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["crewSplit"] = new[] { exception.Message }
+        });
+    }
+    catch (CrewServiceException exception) when (exception.Reason == CrewServiceFailureReason.Conflict)
+    {
+        return Results.Conflict(new { error = exception.Message });
+    }
+});
+
+app.MapPost("/api/v1/crews/{crewId:guid}/payouts", async (
+    Guid crewId,
+    PostCrewPayoutRequest request,
+    ICrewService service,
+    CancellationToken cancellationToken) =>
+{
+    try
+    {
+        var split = await service.SettlePayoutAsync(
+            crewId,
+            request.ActorAccountId,
+            request.GrossAmount,
+            request.CurrencyCode,
+            request.IdempotencyKey,
+            request.Reason,
+            cancellationToken);
+
+        return Results.Ok(new PostCrewPayoutResponse(
+            split.CrewId,
+            request.CurrencyCode.Trim().ToUpperInvariant(),
+            split.GrossAmount,
+            split.CompanyShareAmount,
+            split.CrewShareAmount,
+            split.Members.Select(MapCrewMemberBreakdown).ToArray()));
+    }
+    catch (CrewServiceException exception) when (exception.Reason == CrewServiceFailureReason.NotFound)
+    {
+        return Results.NotFound(new { error = exception.Message });
+    }
+    catch (CrewServiceException exception) when (exception.Reason == CrewServiceFailureReason.Forbidden)
+    {
+        return Results.Forbid();
+    }
+    catch (CrewServiceException exception) when (exception.Reason == CrewServiceFailureReason.InvalidRequest)
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["crewPayout"] = new[] { exception.Message }
+        });
+    }
+    catch (CrewServiceException exception) when (exception.Reason == CrewServiceFailureReason.Conflict)
+    {
+        return Results.Conflict(new { error = exception.Message });
+    }
+    catch (EconomyTransactionServiceException exception) when (exception.Reason == EconomyTransactionFailureReason.Conflict)
+    {
+        return Results.Conflict(new { error = exception.Message });
+    }
+    catch (EconomyTransactionServiceException exception) when (exception.Reason == EconomyTransactionFailureReason.InvalidRequest)
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["crewPayout"] = new[] { exception.Message }
+        });
+    }
+});
+
 app.Run();
 
 static CurrentSeasonResponse MapSeason(Season season) =>
@@ -545,5 +719,17 @@ static PostContractJobApplicationResponse MapContractJobApplication(ContractJobA
         result.Application.Version,
         result.ResultingJobState?.ToString(),
         result.AcceptedApplicationId);
+
+static GetCrewSplitPreviewResponse MapCrewSplitPreview(CrewSplitResult result) =>
+    new(
+        result.CrewId,
+        result.GrossAmount,
+        result.CrewShareRatioBps,
+        result.CrewShareAmount,
+        result.CompanyShareAmount,
+        result.Members.Select(MapCrewMemberBreakdown).ToArray());
+
+static CrewMemberBreakdownResponse MapCrewMemberBreakdown(CrewSplitMemberResult member) =>
+    new(member.AccountId, member.Role.ToString(), member.RatioWeight, member.Amount);
 
 public partial class Program;

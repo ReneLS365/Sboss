@@ -8,6 +8,7 @@ public sealed class SchemaSanityTests
     private const string EconomyMigrationFileName = "0002_phase_1d_economy_tables.sql";
     private const string ContractJobsMigrationFileName = "0003_phase_1e_contract_jobs.sql";
     private const string ContractJobApplicationsMigrationFileName = "0004_phase_1f_contract_job_applications.sql";
+    private const string CrewSplitMigrationFileName = "0006_phase_3b_akkord_crew_split.sql";
 
     [Fact]
     public void BaselineMigrationContainsPhase1BTables()
@@ -71,10 +72,21 @@ public sealed class SchemaSanityTests
     }
 
     [Fact]
+    public void CrewSplitMigrationContainsRequiredTables()
+    {
+        var migrationPath = ResolveMigrationPath(CrewSplitMigrationFileName);
+        var migration = File.ReadAllText(migrationPath);
+
+        Assert.Contains("CREATE TABLE IF NOT EXISTS crews", migration, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("CREATE TABLE IF NOT EXISTS crew_members", migration, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("crew_members_role_valid", migration, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void SchemaSnapshotMatchesBaselineMigration()
     {
         var schema = NormalizeWhitespace(File.ReadAllText(ResolveSchemaPath()));
-        var requiredStatements = new[] { BaselineMigrationFileName, EconomyMigrationFileName, ContractJobsMigrationFileName, ContractJobApplicationsMigrationFileName }
+        var requiredStatements = new[] { BaselineMigrationFileName, EconomyMigrationFileName, ContractJobsMigrationFileName, ContractJobApplicationsMigrationFileName, CrewSplitMigrationFileName }
             .Select(ResolveMigrationPath)
             .SelectMany(path => File.ReadAllText(path)
                 .Split(";", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
@@ -143,6 +155,7 @@ public sealed class SchemaSanityTests
         Assert.Contains("0002_phase_1d_economy_tables.sql", fixture, StringComparison.Ordinal);
         Assert.Contains("0003_phase_1e_contract_jobs.sql", fixture, StringComparison.Ordinal);
         Assert.Contains("0004_phase_1f_contract_job_applications.sql", fixture, StringComparison.Ordinal);
+        Assert.Contains("0006_phase_3b_akkord_crew_split.sql", fixture, StringComparison.Ordinal);
         Assert.Contains("src/backend/db/seed.sql", fixture, StringComparison.Ordinal);
         Assert.Contains("DROP SCHEMA IF EXISTS public CASCADE;", fixture, StringComparison.Ordinal);
         Assert.Contains("CREATE SCHEMA public;", fixture, StringComparison.Ordinal);
@@ -159,6 +172,7 @@ public sealed class SchemaSanityTests
         var economyIndex = fixture.IndexOf("0002_phase_1d_economy_tables.sql", StringComparison.Ordinal);
         var contractJobsIndex = fixture.IndexOf("0003_phase_1e_contract_jobs.sql", StringComparison.Ordinal);
         var contractJobApplicationsIndex = fixture.IndexOf("0004_phase_1f_contract_job_applications.sql", StringComparison.Ordinal);
+        var crewSplitIndex = fixture.IndexOf("0006_phase_3b_akkord_crew_split.sql", StringComparison.Ordinal);
         var targetConnectionIndex = fixture.IndexOf("targetConnection", StringComparison.Ordinal);
         var seedIndex = fixture.IndexOf("src/backend/db/seed.sql", StringComparison.Ordinal);
 
@@ -168,7 +182,8 @@ public sealed class SchemaSanityTests
         Assert.True(baselineIndex >= 0 && economyIndex > baselineIndex, "Fixture must apply the 1D economy migration after the Phase 1B baseline.");
         Assert.True(contractJobsIndex > economyIndex, "Fixture must apply the 1E contract jobs migration after the 1D economy migration.");
         Assert.True(contractJobApplicationsIndex > contractJobsIndex, "Fixture must apply the 1F contract job applications migration after the 1E contract jobs migration.");
-        Assert.True(seedIndex > contractJobApplicationsIndex, "Fixture must load seed.sql only after the full migration chain.");
+        Assert.True(crewSplitIndex > contractJobApplicationsIndex, "Fixture must apply the 3B crew split migration after the 1F contract job applications migration.");
+        Assert.True(seedIndex > crewSplitIndex, "Fixture must load seed.sql only after the full migration chain.");
     }
 
     private static string ResolveSchemaPath()
