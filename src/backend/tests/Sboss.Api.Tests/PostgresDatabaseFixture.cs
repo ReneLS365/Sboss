@@ -12,7 +12,8 @@ public sealed class PostgresDatabaseFixture : IAsyncLifetime
         "src/backend/db/migrations/0003_phase_1e_contract_jobs.sql",
         "src/backend/db/migrations/0004_phase_1f_contract_job_applications.sql",
         "src/backend/db/migrations/0005_phase_3a_yard_capacity_inventory.sql",
-        "src/backend/db/migrations/0006_phase_3b_akkord_crew_split.sql"
+        "src/backend/db/migrations/0006_phase_3b_akkord_crew_split.sql",
+        "src/backend/db/migrations/0007_phase_3b_crew_payout_settlement_snapshots.sql"
     };
 
     public string ConnectionString { get; private set; } = string.Empty;

@@ -1,5 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
+using System.Text.Json;
+using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 using Sboss.Contracts.Crews;
 
@@ -117,6 +120,123 @@ public sealed class CrewEndpointsTests
         Assert.Equal(140, await ReadBalanceAsync(OwnerAccountId));
         Assert.Equal(40, await ReadBalanceAsync(SvendAccountId));
         Assert.Equal(20, await ReadBalanceAsync(LaerlingAccountId));
+    }
+
+    [Fact]
+    public async Task CreateCrew_InvalidInput_ReturnsValidationProblem()
+    {
+        await _database.ResetAsync();
+        using var factory = new TestWebApplicationFactory(_database.ConnectionString);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/v1/crews", new PostCreateCrewRequest(Guid.Empty, " "));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<HttpValidationProblemDetails>();
+        Assert.NotNull(problem);
+        Assert.True(problem!.Errors.ContainsKey("crew"));
+    }
+
+    [Fact]
+    public async Task Payout_NullStringInputs_ReturnsValidationProblem()
+    {
+        await _database.ResetAsync();
+        await InsertAccountAsync(SvendAccountId);
+        using var factory = new TestWebApplicationFactory(_database.ConnectionString);
+        using var client = factory.CreateClient();
+        var createResponse = await client.PostAsJsonAsync("/api/v1/crews", new PostCreateCrewRequest(OwnerAccountId, "Crew Null"));
+        var createdCrew = await createResponse.Content.ReadFromJsonAsync<PostCreateCrewResponse>();
+        Assert.NotNull(createdCrew);
+        await client.PostAsJsonAsync(
+            $"/api/v1/crews/{createdCrew!.CrewId}/members",
+            new PostCrewMemberAssignmentRequest(OwnerAccountId, SvendAccountId, "Svend"));
+
+        var payload = JsonSerializer.Serialize(new
+        {
+            actorAccountId = OwnerAccountId,
+            grossAmount = 100,
+            currencyCode = (string?)null,
+            idempotencyKey = (string?)null,
+            reason = (string?)null
+        });
+        using var content = new StringContent(payload, Encoding.UTF8, "application/json");
+        var payoutResponse = await client.PostAsync($"/api/v1/crews/{createdCrew.CrewId}/payouts", content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, payoutResponse.StatusCode);
+        var problem = await payoutResponse.Content.ReadFromJsonAsync<HttpValidationProblemDetails>();
+        Assert.NotNull(problem);
+        Assert.True(problem!.Errors.ContainsKey("crewPayout"));
+    }
+
+    [Fact]
+    public async Task Payout_ReplayStaysStableAfterMembershipChanges()
+    {
+        await _database.ResetAsync();
+        await InsertAccountAsync(SvendAccountId);
+        await InsertAccountAsync(LaerlingAccountId);
+        var replacementAccountId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb3");
+        await InsertAccountAsync(replacementAccountId);
+        using var factory = new TestWebApplicationFactory(_database.ConnectionString);
+        using var client = factory.CreateClient();
+        var createResponse = await client.PostAsJsonAsync("/api/v1/crews", new PostCreateCrewRequest(OwnerAccountId, "Crew Replay Stable"));
+        var createdCrew = await createResponse.Content.ReadFromJsonAsync<PostCreateCrewResponse>();
+        Assert.NotNull(createdCrew);
+
+        await client.PostAsJsonAsync(
+            $"/api/v1/crews/{createdCrew!.CrewId}/members",
+            new PostCrewMemberAssignmentRequest(OwnerAccountId, SvendAccountId, "Svend"));
+        await client.PostAsJsonAsync(
+            $"/api/v1/crews/{createdCrew.CrewId}/members",
+            new PostCrewMemberAssignmentRequest(OwnerAccountId, LaerlingAccountId, "Laerling"));
+
+        var firstPayout = await client.PostAsJsonAsync(
+            $"/api/v1/crews/{createdCrew.CrewId}/payouts",
+            new PostCrewPayoutRequest(OwnerAccountId, 100, "COIN", "crew-replay-stable", "contract_settlement"));
+        Assert.Equal(HttpStatusCode.OK, firstPayout.StatusCode);
+
+        await client.PostAsJsonAsync(
+            $"/api/v1/crews/{createdCrew.CrewId}/members/{LaerlingAccountId}/remove",
+            new PostCrewMemberRemovalRequest(OwnerAccountId));
+        await client.PostAsJsonAsync(
+            $"/api/v1/crews/{createdCrew.CrewId}/members",
+            new PostCrewMemberAssignmentRequest(OwnerAccountId, replacementAccountId, "Laerling"));
+
+        var replayPayout = await client.PostAsJsonAsync(
+            $"/api/v1/crews/{createdCrew.CrewId}/payouts",
+            new PostCrewPayoutRequest(OwnerAccountId, 100, "COIN", "crew-replay-stable", "contract_settlement"));
+        Assert.Equal(HttpStatusCode.OK, replayPayout.StatusCode);
+
+        Assert.Equal(140, await ReadBalanceAsync(OwnerAccountId));
+        Assert.Equal(40, await ReadBalanceAsync(SvendAccountId));
+        Assert.Equal(20, await ReadBalanceAsync(LaerlingAccountId));
+        Assert.Equal(0, await ReadBalanceAsync(replacementAccountId));
+    }
+
+    [Fact]
+    public async Task Payout_ConcurrentReplay_DoesNotReturnInternalServerError()
+    {
+        await _database.ResetAsync();
+        await InsertAccountAsync(SvendAccountId);
+        await InsertAccountAsync(LaerlingAccountId);
+        using var factory = new TestWebApplicationFactory(_database.ConnectionString);
+        using var client = factory.CreateClient();
+        var createResponse = await client.PostAsJsonAsync("/api/v1/crews", new PostCreateCrewRequest(OwnerAccountId, "Crew Race"));
+        var createdCrew = await createResponse.Content.ReadFromJsonAsync<PostCreateCrewResponse>();
+        Assert.NotNull(createdCrew);
+        await client.PostAsJsonAsync(
+            $"/api/v1/crews/{createdCrew!.CrewId}/members",
+            new PostCrewMemberAssignmentRequest(OwnerAccountId, SvendAccountId, "Svend"));
+        await client.PostAsJsonAsync(
+            $"/api/v1/crews/{createdCrew.CrewId}/members",
+            new PostCrewMemberAssignmentRequest(OwnerAccountId, LaerlingAccountId, "Laerling"));
+
+        var request = new PostCrewPayoutRequest(OwnerAccountId, 100, "COIN", "crew-race-idempotency", "contract_settlement");
+        var responses = await Task.WhenAll(
+            client.PostAsJsonAsync($"/api/v1/crews/{createdCrew.CrewId}/payouts", request),
+            client.PostAsJsonAsync($"/api/v1/crews/{createdCrew.CrewId}/payouts", request));
+
+        Assert.All(responses, response => Assert.NotEqual(HttpStatusCode.InternalServerError, response.StatusCode));
+        Assert.All(responses, response => Assert.Equal(HttpStatusCode.OK, response.StatusCode));
     }
 
     private async Task InsertAccountAsync(Guid accountId)
