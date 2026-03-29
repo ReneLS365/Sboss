@@ -21,13 +21,19 @@ public sealed class PostgresYardRepository : IYardRepository
         return await LoadSnapshotAsync(connection, null, accountId, supportedComponents, cancellationToken);
     }
 
-    public async Task<PurchaseResult> PurchaseAsync(Guid accountId, AuthoritativeComponentDefinition component, int quantity, CancellationToken cancellationToken)
+    public async Task<PurchaseResult> PurchaseAsync(
+        Guid accountId,
+        AuthoritativeComponentDefinition component,
+        int quantity,
+        IReadOnlyCollection<AuthoritativeComponentDefinition> supportedComponents,
+        CancellationToken cancellationToken)
     {
         await using var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
         await EnsureYardStateAsync(connection, transaction, accountId, cancellationToken);
+        await LockYardStateAsync(connection, transaction, accountId, cancellationToken);
 
-        var snapshot = await LoadSnapshotAsync(connection, transaction, accountId, new[] { component }, cancellationToken);
+        var snapshot = await LoadSnapshotAsync(connection, transaction, accountId, supportedComponents, cancellationToken);
         if (snapshot is null)
         {
             await transaction.RollbackAsync(cancellationToken);
@@ -87,7 +93,7 @@ public sealed class PostgresYardRepository : IYardRepository
             await inventoryCommand.ExecuteNonQueryAsync(cancellationToken);
         }
 
-        var updatedSnapshot = await LoadSnapshotAsync(connection, transaction, accountId, new[] { component }, cancellationToken);
+        var updatedSnapshot = await LoadSnapshotAsync(connection, transaction, accountId, supportedComponents, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return new PurchaseResult(true, null, null, updatedSnapshot, GetOwnedQuantity(updatedSnapshot!, component.ItemCode));
     }
@@ -110,6 +116,20 @@ public sealed class PostgresYardRepository : IYardRepository
         await using var command = new NpgsqlCommand(ensureSql, connection, transaction);
         command.Parameters.AddWithValue("accountId", accountId);
         command.Parameters.AddWithValue("defaultCapacity", DefaultYardCapacity);
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private static async Task LockYardStateAsync(NpgsqlConnection connection, NpgsqlTransaction transaction, Guid accountId, CancellationToken cancellationToken)
+    {
+        const string lockSql = """
+            SELECT account_id
+            FROM yard_states
+            WHERE account_id = @accountId
+            FOR UPDATE;
+            """;
+
+        await using var command = new NpgsqlCommand(lockSql, connection, transaction);
+        command.Parameters.AddWithValue("accountId", accountId);
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 

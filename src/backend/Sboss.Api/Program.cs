@@ -280,7 +280,17 @@ app.MapPost("/api/v1/yard/{accountId:guid}/purchases", async (
         });
     }
 
-    var result = await yardRepository.PurchaseAsync(accountId, component, request.Quantity, cancellationToken);
+    var maxSafeCapacityQuantity = int.MaxValue / component.UnitCapacity;
+    if (request.Quantity > maxSafeCapacityQuantity)
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["quantity"] = new[] { "Quantity is too large for safe capacity calculation." }
+        });
+    }
+
+    var supportedComponents = componentCatalog.GetSupportedComponents();
+    var result = await yardRepository.PurchaseAsync(accountId, component, request.Quantity, supportedComponents, cancellationToken);
     if (!result.Success)
     {
         return result.FailureCode switch

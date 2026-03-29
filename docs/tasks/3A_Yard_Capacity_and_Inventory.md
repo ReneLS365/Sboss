@@ -31,17 +31,11 @@ Design and implement the logistics core for players’ **Yard** (depot).  The Ya
 ## Allowed Files (Frozen)
 - `docs/tasks/3A_Yard_Capacity_and_Inventory.md`
 - `src/backend/Sboss.Api/Program.cs`
-- `src/backend/Sboss.Contracts/Yard/GetYardStateResponse.cs`
 - `src/backend/Sboss.Contracts/Yard/PostYardPurchaseRequest.cs`
-- `src/backend/Sboss.Contracts/Yard/PostYardPurchaseResponse.cs`
-- `src/backend/Sboss.Infrastructure/ServiceCollectionExtensions.cs`
 - `src/backend/Sboss.Infrastructure/Repositories/IYardRepository.cs`
 - `src/backend/Sboss.Infrastructure/Repositories/PostgresYardRepository.cs`
 - `src/backend/Sboss.Infrastructure/Services/AuthoritativeComponentCatalog.cs`
 - `src/backend/Sboss.Infrastructure/Services/IAuthoritativeComponentCatalog.cs`
-- `src/backend/db/migrations/0005_phase_3a_yard_capacity_inventory.sql`
-- `src/backend/db/seed.sql`
-- `src/backend/tests/Sboss.Api.Tests/PostgresDatabaseFixture.cs`
 - `src/backend/tests/Sboss.Api.Tests/MatchResultsContractTests.cs`
 - `src/backend/tests/Sboss.Api.Tests/YardEndpointsTests.cs`
 
@@ -78,3 +72,11 @@ Ensure that `SBOSS_TEST_DATABASE` is configured and that the new Yard tables do 
 - No new architectural layer beyond a narrow repository/service extension used by these two endpoints and placement gating.
 - No additional yard endpoints, no UI DTO expansion beyond current slice needs, no broad inventory model rewrite.
 - No prep work for 3B/3C/3D/3E.
+
+## Follow-up Patch Scope (PR #49 corrective)
+- This follow-up is limited to review-finding fixes and CI/test restoration for the existing 3A PR.
+- No feature expansion beyond the existing 3A vertical slice.
+- Fixes only:
+  1. full-catalog capacity accounting in purchase snapshots/checks,
+  2. account-scoped serialized purchase capacity enforcement,
+  3. oversized quantity validation before checked arithmetic.

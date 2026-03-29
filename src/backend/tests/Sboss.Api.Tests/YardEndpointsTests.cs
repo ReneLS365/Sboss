@@ -102,6 +102,67 @@ public sealed class YardEndpointsTests
         Assert.Equal(5, body.OwnedQuantity);
     }
 
+    [Fact]
+    public async Task Purchase_ResponseCapacityUsesFullCatalogForMixedInventory()
+    {
+        await _database.ResetAsync();
+        using var factory = new TestWebApplicationFactory(_database.ConnectionString);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/v1/yard/{AccountId}/purchases",
+            new PostYardPurchaseRequest("scaffold_red_diagonal", 1));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<PostYardPurchaseResponse>();
+        Assert.NotNull(body);
+        Assert.Equal(14, body!.UsedCapacity);
+        Assert.Equal(1486, body.RemainingCapacity);
+    }
+
+    [Fact]
+    public async Task Purchase_RejectsOversizedQuantityWithClientValidationError()
+    {
+        await _database.ResetAsync();
+        using var factory = new TestWebApplicationFactory(_database.ConnectionString);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/v1/yard/{AccountId}/purchases",
+            new PostYardPurchaseRequest("scaffold_blue_frame", int.MaxValue));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Purchase_SerializesCapacityChecksPerAccountUnderConcurrency()
+    {
+        await _database.ResetAsync();
+        await SetYardCapacityAsync(AccountId, 10);
+        using var factory = new TestWebApplicationFactory(_database.ConnectionString);
+        using var client = factory.CreateClient();
+
+        var firstTask = client.PostAsJsonAsync(
+            $"/api/v1/yard/{AccountId}/purchases",
+            new PostYardPurchaseRequest("scaffold_blue_frame", 1));
+        var secondTask = client.PostAsJsonAsync(
+            $"/api/v1/yard/{AccountId}/purchases",
+            new PostYardPurchaseRequest("scaffold_blue_frame", 1));
+
+        await Task.WhenAll(firstTask, secondTask);
+        var statuses = new[] { firstTask.Result.StatusCode, secondTask.Result.StatusCode };
+
+        Assert.Single(statuses.Where(status => status == HttpStatusCode.OK));
+        Assert.Single(statuses.Where(status => status == HttpStatusCode.BadRequest));
+
+        var yard = await client.GetFromJsonAsync<GetYardStateResponse>($"/api/v1/yard/{AccountId}");
+        Assert.NotNull(yard);
+        Assert.Equal(10, yard!.MaxCapacity);
+        Assert.Equal(4, yard.Inventory.Single(item => item.ItemCode == "scaffold_blue_frame").Quantity);
+        Assert.Equal(10, yard.UsedCapacity);
+        Assert.Equal(0, yard.RemainingCapacity);
+    }
+
     private async Task SetYardCapacityAsync(Guid accountId, int maxCapacity)
     {
         await using var connection = new NpgsqlConnection(_database.ConnectionString);

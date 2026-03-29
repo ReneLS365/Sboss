@@ -5,7 +5,12 @@ namespace Sboss.Infrastructure.Repositories;
 public interface IYardRepository
 {
     Task<YardStateSnapshot?> GetSnapshotAsync(Guid accountId, IReadOnlyCollection<AuthoritativeComponentDefinition> supportedComponents, CancellationToken cancellationToken);
-    Task<PurchaseResult> PurchaseAsync(Guid accountId, AuthoritativeComponentDefinition component, int quantity, CancellationToken cancellationToken);
+    Task<PurchaseResult> PurchaseAsync(
+        Guid accountId,
+        AuthoritativeComponentDefinition component,
+        int quantity,
+        IReadOnlyCollection<AuthoritativeComponentDefinition> supportedComponents,
+        CancellationToken cancellationToken);
 }
 
 public sealed record YardStateSnapshot(
