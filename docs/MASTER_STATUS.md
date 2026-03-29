@@ -1,8 +1,8 @@
 # Sboss — Master Status (Lean MVP)
 
 ## Current Position
-- Current phase: **Phase 2 — Core Gameplay Validation**
-- Completed phase: **Phase 1 — Authoritative Core Domain**
+- Current phase: **Phase 3 — Company & Meta-loop**
+- Completed phase: **Phase 2 — Core Gameplay Validation**
 - Current task: **3A — Yard Capacity & Inventory**
 - Next task: **3B — Akkord & Crew Split**
 
@@ -10,7 +10,7 @@
 
 ## Status overview
 - [x] Phase 1 — Authoritative Core Domain (HTTP, DB, Economy Ledger)
-- [ ] Phase 2 — Core Gameplay Validation (Command Queue, Unity RTS-kamera, Score-motor)
+- [x] Phase 2 — Core Gameplay Validation (Command Queue, Unity RTS-kamera, Score-motor)
 - [ ] Phase 3 — Company & Meta-loop (Yard Inventory, Akkord-system, XP)
 - [ ] Phase 4 — Asynchronous Competition (Leaderboards, Daily Challenges, Ghost Data)
 - [ ] Phase 5 — Release Prep (Anti-cheat, QA, Deployment)
