@@ -36,11 +36,7 @@ public sealed class RoadmapStatusGuardrailTests
         var nextStepIndex = roadmapSteps.IndexOf(nextStep);
 
         Assert.True(nextStepIndex >= 0, $"Expected to find Next task step '{nextStep}' in roadmap checklist.");
-        Assert.True(
-            nextStepIndex + 1 < roadmapSteps.Count,
-            $"Cannot construct skip-ahead fixture because Next task '{nextStep}' has no later roadmap step.");
-
-        var skippedAheadStep = roadmapSteps[nextStepIndex + 1];
+        var skippedAheadStep = DetermineInvalidNextTaskStep(roadmapSteps, nextStepIndex);
         var nextTaskLine = FindTaskLine(masterStatus, NextTaskRegex, "Next task");
         var mutatedNextTaskLine = nextTaskLine.Replace(nextStep, skippedAheadStep, StringComparison.Ordinal);
         Assert.NotEqual(nextTaskLine, mutatedNextTaskLine);
@@ -247,5 +243,20 @@ public sealed class RoadmapStatusGuardrailTests
         }
 
         throw new InvalidOperationException("Unable to construct an invalid roadmap step token.");
+    }
+
+    private static string DetermineInvalidNextTaskStep(IReadOnlyList<string> roadmapSteps, int nextStepIndex)
+    {
+        if (nextStepIndex + 1 < roadmapSteps.Count)
+        {
+            return roadmapSteps[nextStepIndex + 1];
+        }
+
+        if (nextStepIndex - 1 >= 0)
+        {
+            return roadmapSteps[nextStepIndex - 1];
+        }
+
+        throw new InvalidOperationException("Unable to construct an invalid Next task step fixture.");
     }
 }
