@@ -38,7 +38,8 @@ public sealed class MatchResultsContractTests
         Assert.True(payload.ComboMax > 0);
         Assert.True(payload.StabilityPercent > 0);
         Assert.Equal(3, payload.ValidationResults.Count);
-        Assert.All(payload.ValidationResults, result => Assert.True(result.Accepted));
+        Assert.Equal(new[] { true, true, false }, payload.ValidationResults.Select(result => result.Accepted).ToArray());
+        Assert.Equal("yard_capacity_exceeded", payload.ValidationResults[^1].Code);
         Assert.Equal(2, payload.Version);
     }
 
@@ -91,7 +92,9 @@ public sealed class MatchResultsContractTests
         var payload = await response.Content.ReadFromJsonAsync<PostMatchResultResponse>();
         Assert.NotNull(payload);
         Assert.NotEqual(request.ReportedScore, payload!.Score);
-        Assert.All(payload.ValidationResults, result => Assert.True(result.Accepted));
+        Assert.Equal(3, payload.ValidationResults.Count);
+        Assert.Equal(new[] { true, true, false }, payload.ValidationResults.Select(result => result.Accepted).ToArray());
+        Assert.Equal("yard_capacity_exceeded", payload.ValidationResults[^1].Code);
     }
 
     [Fact]
