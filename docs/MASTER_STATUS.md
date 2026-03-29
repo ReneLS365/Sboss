@@ -3,8 +3,8 @@
 ## Current Position
 - Current phase: **Phase 2 — Core Gameplay Validation**
 - Completed phase: **Phase 1 — Authoritative Core Domain**
-- Current task: **2F — Vertical Slice Test**
-- Next task: **3A — Yard Capacity & Inventory**
+- Current task: **3A — Yard Capacity & Inventory**
+- Next task: **3B — Akkord & Crew Split**
 
 ---
 
@@ -36,7 +36,7 @@ Fokus: Det faktiske spil. Implementering af event-baseret Command Queue og Clien
 - [x] 2C Client-Side Prediction: Tillad Unity at placere dele øjeblikkeligt lokalt, mens server godkender asynkront. Rollback ved server-afvisning.
 - [x] 2D Scoring Engine: Server-autoritativ beregning af stabilitet, combo-multiplier og tid.
 - [x] 2E Scaffold Assembly Rules: Definer geometrisk logik for forbindelser (Blå ramme -> Gult dæk -> Rød diagonal).
-- [ ] 2F Vertical Slice Test: Spil én komplet runde fra opgaveaflæsning til server-valideret score.
+- [x] 2F Vertical Slice Test: Spil én komplet runde fra opgaveaflæsning til server-valideret score.
 
 ## Phase 3 — Company & Meta-loop
 Fokus: Progression og økonomi (RTS-logistik).
