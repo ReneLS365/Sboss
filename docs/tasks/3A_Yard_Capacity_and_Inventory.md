@@ -10,34 +10,46 @@ Design and implement the logistics core for players’ **Yard** (depot).  The Ya
 
 ## Scope
 ### In scope
-- Define domain entities for `Yard`, `YardCapacity` and `InventoryItem` in the backend (`Sboss.Domain`).
-- Represent each component type’s unit size/weight (space usage) and maintain totals per player.
-- Implement PostgreSQL tables and an EF Core repository/service to persist the Yard and Inventory state.
-- Add API endpoints in `Sboss.Api` to purchase components and query current inventory/capacity.
-- Validate purchases against the player’s remaining capacity and against the economic balance (reuse the Phase 1 transaction service).
-- Implement gating logic that rejects a contract start if the job’s material requirements exceed the player’s inventory or capacity.
-- Provide additive SQL migration script(s) to create new tables/columns.
+- Persist authoritative yard capacity per account with a default hard-cap baseline.
+- Persist authoritative scaffold inventory per account and expose authoritative yard snapshots.
+- Add exactly two backend endpoints for this slice:
+  - Read yard state for an account.
+  - Purchase supported scaffold components for an account.
+- Enforce server-side purchase rejection for:
+  - quantity <= 0
+  - unknown itemCode
+  - missing account
+  - insufficient funds
+  - resulting capacity overflow
+- Replace the existing placeholder placement gating path so match-result placement validation rejects sequences that require more owned components than the account inventory contains.
+- Add narrow migration + tests for the above behavior only.
 ### Out of scope
-- Client‑side UI/UX for showing the Yard or shopping (Unity remains a dumb client).
-- Any “Wear & Tear” or material degradation logic (belongs in 3C).
-- Crew wage splitting or performance (belongs in 3B).
-- Changes to game economy aside from purchasing scaffold components.
+- Any Unity/client change.
+- Any 3B+ behavior (crew split, wages, wear/tear, loadout/fog, XP, leaderboards, ghost data).
+- Economy redesigns, scoring redesigns, command queue redesigns, broad refactors, or shared abstraction prep.
 
-## Allowed Files
-- `src/backend/Sboss.Domain/**` – domain models and business logic for Yard and Inventory.
-- `src/backend/Sboss.Application/**` – application services orchestrating Yard operations.
-- `src/backend/Sboss.Contracts/**` – DTOs for Yard requests/responses.
-- `src/backend/Sboss.Infrastructure/**` – EF Core persistence, repositories.
-- `src/backend/Sboss.Api/**` – API endpoints for Yard operations.
-- `src/backend/tests/**` – unit/integration tests for Yard logic.
-- `src/backend/db/scripts/**` – additive SQL migration for Yard tables.
-- `docs/tasks/3A_Yard_Capacity_and_Inventory.md` (this file).
+## Allowed Files (Frozen)
+- `docs/tasks/3A_Yard_Capacity_and_Inventory.md`
+- `src/backend/Sboss.Api/Program.cs`
+- `src/backend/Sboss.Contracts/Yard/GetYardStateResponse.cs`
+- `src/backend/Sboss.Contracts/Yard/PostYardPurchaseRequest.cs`
+- `src/backend/Sboss.Contracts/Yard/PostYardPurchaseResponse.cs`
+- `src/backend/Sboss.Infrastructure/ServiceCollectionExtensions.cs`
+- `src/backend/Sboss.Infrastructure/Repositories/IYardRepository.cs`
+- `src/backend/Sboss.Infrastructure/Repositories/PostgresYardRepository.cs`
+- `src/backend/Sboss.Infrastructure/Services/AuthoritativeComponentCatalog.cs`
+- `src/backend/Sboss.Infrastructure/Services/IAuthoritativeComponentCatalog.cs`
+- `src/backend/db/migrations/0005_phase_3a_yard_capacity_inventory.sql`
+- `src/backend/db/seed.sql`
+- `src/backend/tests/Sboss.Api.Tests/PostgresDatabaseFixture.cs`
+- `src/backend/tests/Sboss.Api.Tests/MatchResultsContractTests.cs`
+- `src/backend/tests/Sboss.Api.Tests/YardEndpointsTests.cs`
 
 ## Forbidden Files
-- `src/client/unity/**` – no client logic; Unity remains dumb.
-- `.github/workflows/**` – no CI or workflow changes in this task.
-- `src/backend/Sboss.Scoring/**` or scoring logic; scoring is covered in earlier tasks.
-- Changes to `docs/MASTER_STATUS.md` – roadmap updates happen outside this task.
+- `docs/MASTER_STATUS.md`
+- `src/client/unity/**`
+- `.github/workflows/**`
+- Any file not listed in **Allowed Files (Frozen)**.
 
 ## Acceptance Criteria
 1. A player’s Yard capacity and inventory are persisted and modifiable via server APIs.
@@ -61,3 +73,8 @@ Ensure that `SBOSS_TEST_DATABASE` is configured and that the new Yard tables do 
 - Use asynchronous C# calls and respect existing domain patterns (e.g. aggregate roots, repositories).
 - Keep changes small and modular to avoid scope creep.
 - Document any new events or domain invariants.
+
+## Non-goals
+- No new architectural layer beyond a narrow repository/service extension used by these two endpoints and placement gating.
+- No additional yard endpoints, no UI DTO expansion beyond current slice needs, no broad inventory model rewrite.
+- No prep work for 3B/3C/3D/3E.

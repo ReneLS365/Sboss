@@ -198,6 +198,28 @@ public sealed class MatchResultsContractTests
         Assert.Equal("scaffold_assembly_invalid_sequence", result.ValidationResults[2].Code);
     }
 
+    [Fact]
+    public async Task PostMatchResult_RejectsPlacementsWhenOwnedInventoryIsInsufficient()
+    {
+        var client = _factory.CreateClient();
+        var seedId = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
+        var request = new PostMatchResultRequest(
+            Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+            Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc"),
+            seedId,
+            CreatePlacementIntents(seedId, "scaffold_red_diagonal"),
+            null);
+
+        var response = await client.PostAsJsonAsync("/api/v1/match-results", request);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var result = await response.Content.ReadFromJsonAsync<PostMatchResultResponse>();
+        Assert.NotNull(result);
+        Assert.Single(result!.ValidationResults);
+        Assert.False(result.ValidationResults[0].Accepted);
+        Assert.Equal("inventory_insufficient", result.ValidationResults[0].Code);
+    }
+
     private static IReadOnlyList<PlaceComponentIntent> CreatePlacementIntents(Guid seedId, params string[] componentIds)
     {
         var timestamp = new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero);
