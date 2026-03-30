@@ -517,7 +517,7 @@ public sealed class CrewService : ICrewService
             membersCommand.Parameters.AddWithValue("idempotencyKey", idempotencyKey);
             membersCommand.Parameters.AddWithValue("accountId", member.AccountId);
             membersCommand.Parameters.AddWithValue("role", member.Role.ToString());
-            membersCommand.Parameters.AddWithValue("roleWeight", member.RoleWeight);
+            membersCommand.Parameters.AddWithValue("roleWeight", member.RatioWeight);
             membersCommand.Parameters.AddWithValue("amount", member.Amount);
             await membersCommand.ExecuteNonQueryAsync(cancellationToken);
         }
@@ -534,7 +534,7 @@ public sealed class CrewService : ICrewService
             split.CompanyShareAmount,
             createdAt,
             split.Members.Select(member =>
-                new CrewPayoutMemberSettlement(member.AccountId, member.Role, member.RoleWeight, member.Amount)).ToArray());
+                new CrewPayoutMemberSettlement(member.AccountId, member.Role, member.RatioWeight, member.Amount)).ToArray());
     }
 
     private sealed record CrewPayoutSettlement(
