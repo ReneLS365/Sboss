@@ -14,6 +14,10 @@ INSERT INTO level_seeds (level_seed_id, seed_value, biome, template, objective, 
 VALUES ('dddddddd-dddd-dddd-dddd-dddddddddddd', 'SBOSS-SEED-001', 'urban', 'template_alpha', 'reach_target', '{"modifiers":["none"]}', 120000, 90000, 1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')
 ON CONFLICT (level_seed_id) DO NOTHING;
 
+INSERT INTO level_seeds (level_seed_id, seed_value, biome, template, objective, modifiers_json, par_time_ms, gold_time_ms, version, created_at, updated_at)
+VALUES ('edededed-eded-eded-eded-edededededed', 'SBOSS-SEED-002', 'offshore', 'template_offshore_rotation', 'hold_position', '{"modifiers":["wind"]}', 180000, 140000, 1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')
+ON CONFLICT (level_seed_id) DO NOTHING;
+
 INSERT INTO inventory_items (inventory_item_id, account_id, item_code, quantity, total_integrity_bps, created_at, updated_at, version)
 VALUES ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'starter_token', 1, 10000, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 1)
 ON CONFLICT (inventory_item_id) DO NOTHING;
@@ -45,3 +49,7 @@ ON CONFLICT (economy_transaction_id) DO NOTHING;
 INSERT INTO match_results (match_result_id, account_id, season_id, level_seed_id, score, clear_time_ms, combo_max, penalties, validation_status, created_at, updated_at, version)
 VALUES ('12121212-1212-1212-1212-121212121212', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'dddddddd-dddd-dddd-dddd-dddddddddddd', 1000, 110000, 12, 0, 'accepted', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 1)
 ON CONFLICT (match_result_id) DO NOTHING;
+
+INSERT INTO account_progression (account_id, total_xp, level, created_at, updated_at, version)
+VALUES ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 0, 1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 1)
+ON CONFLICT (account_id) DO NOTHING;

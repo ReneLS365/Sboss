@@ -397,7 +397,7 @@ public sealed class EconomyTransactionService : IEconomyTransactionService
         const string sql = """
             UPDATE account_balances
             SET balance = @balance,
-                updated_at = @updatedAt,
+                updated_at = GREATEST(updated_at, @updatedAt),
                 version = version + 1
             WHERE account_id = @accountId AND currency_code = @currencyCode
             RETURNING account_id, currency_code, balance, created_at, updated_at, version;
