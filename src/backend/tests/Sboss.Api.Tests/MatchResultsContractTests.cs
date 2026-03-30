@@ -24,6 +24,7 @@ public sealed class MatchResultsContractTests
     [Fact]
     public async Task PostMatchResult_ReturnsCreatedAndValidationStatus()
     {
+        await _database.ResetAsync();
         var client = _factory.CreateClient();
         var request = new PostMatchResultRequest(
             Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
@@ -50,6 +51,7 @@ public sealed class MatchResultsContractTests
     [Fact]
     public async Task PostMatchResult_WithInvalidDomainPayload_ReturnsBadRequest()
     {
+        await _database.ResetAsync();
         var client = _factory.CreateClient();
         var request = new PostMatchResultRequest(
             Guid.Empty,
@@ -66,6 +68,7 @@ public sealed class MatchResultsContractTests
     [Fact]
     public async Task PostMatchResult_WithUnknownReferences_ReturnsBadRequest()
     {
+        await _database.ResetAsync();
         var client = _factory.CreateClient();
         var request = new PostMatchResultRequest(
             Guid.Parse("99999999-9999-9999-9999-999999999999"),
@@ -82,6 +85,7 @@ public sealed class MatchResultsContractTests
     [Fact]
     public async Task PostMatchResult_IgnoresCallerReportedScoreAndReturnsAuthoritativeScore()
     {
+        await _database.ResetAsync();
         var client = _factory.CreateClient();
         var request = new PostMatchResultRequest(
             Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
@@ -104,6 +108,7 @@ public sealed class MatchResultsContractTests
     [Fact]
     public async Task PostMatchResult_IsDeterministicForSameAuthoritativeInput()
     {
+        await _database.ResetAsync();
         var client = _factory.CreateClient();
         var seedId = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
         var request = new PostMatchResultRequest(
@@ -133,6 +138,7 @@ public sealed class MatchResultsContractTests
     [Fact]
     public async Task PostMatchResult_WithNullPlacementIntentEntry_ReturnsBadRequest()
     {
+        await _database.ResetAsync();
         var client = _factory.CreateClient();
         var payload = """
         {
@@ -155,6 +161,7 @@ public sealed class MatchResultsContractTests
     [Fact]
     public async Task PostMatchResult_RejectsPlacementsThatExceedSequenceCapacity()
     {
+        await _database.ResetAsync();
         var client = _factory.CreateClient();
         var seedId = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
         var request = new PostMatchResultRequest(
@@ -180,6 +187,7 @@ public sealed class MatchResultsContractTests
     [Fact]
     public async Task PostMatchResult_RejectsOutOfOrderAssemblySequenceUsingServerAuthoritativeRules()
     {
+        await _database.ResetAsync();
         var client = _factory.CreateClient();
         var seedId = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
         var request = new PostMatchResultRequest(
@@ -205,6 +213,7 @@ public sealed class MatchResultsContractTests
     [Fact]
     public async Task PostMatchResult_RejectsPlacementsWhenOwnedInventoryIsInsufficient()
     {
+        await _database.ResetAsync();
         var accountId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
         await SetInventoryQuantityAsync(accountId, "scaffold_blue_frame", 0);
 
