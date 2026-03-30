@@ -110,28 +110,12 @@ public sealed class ProgressionService : IProgressionService
         await using var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
 
-        var existingAward = await GetAwardRecordAsync(connection, transaction, accountId, matchResultId, cancellationToken);
-        if (existingAward is not null)
-        {
-            var state = await GetOrCreateStateAsync(connection, transaction, accountId, cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-            return new ProgressionAwardResult(
-                accountId,
-                matchResultId,
-                existingAward.XpAwarded,
-                state.TotalXp,
-                state.Level,
-                false,
-                true);
-        }
-
-        var current = await GetOrCreateStateAsync(connection, transaction, accountId, cancellationToken);
+        var current = await GetOrCreateStateForUpdateAsync(connection, transaction, accountId, cancellationToken);
         var updatedTotalXp = checked(current.TotalXp + totalAwardXp);
         var updatedLevel = EvaluateLevel(updatedTotalXp);
         var leveledUp = updatedLevel > current.Level;
 
-        await UpsertProgressionStateAsync(connection, transaction, accountId, updatedTotalXp, updatedLevel, awardedAt, cancellationToken);
-        await InsertAwardRecordAsync(
+        var insertedAward = await TryInsertAwardRecordAsync(
             connection,
             transaction,
             accountId,
@@ -143,6 +127,22 @@ public sealed class ProgressionService : IProgressionService
             totalAwardXp,
             awardedAt,
             cancellationToken);
+
+        if (!insertedAward)
+        {
+            var existingAward = await GetAwardRecordAsync(connection, transaction, accountId, matchResultId, cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return new ProgressionAwardResult(
+                accountId,
+                matchResultId,
+                existingAward?.XpAwarded ?? totalAwardXp,
+                current.TotalXp,
+                current.Level,
+                false,
+                true);
+        }
+
+        await UpsertProgressionStateAsync(connection, transaction, accountId, updatedTotalXp, updatedLevel, awardedAt, cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
         return new ProgressionAwardResult(accountId, matchResultId, totalAwardXp, updatedTotalXp, updatedLevel, leveledUp, false);
@@ -237,6 +237,32 @@ public sealed class ProgressionService : IProgressionService
             ?? new ProgressionState(accountId, 0, 1, 1);
     }
 
+    private static async Task<ProgressionState> GetOrCreateStateForUpdateAsync(
+        NpgsqlConnection connection,
+        NpgsqlTransaction transaction,
+        Guid accountId,
+        CancellationToken cancellationToken)
+    {
+        var state = await GetStateRecordForUpdateAsync(connection, transaction, accountId, cancellationToken);
+        if (state is not null)
+        {
+            return state;
+        }
+
+        const string insertSql = """
+            INSERT INTO account_progression (account_id, total_xp, level, created_at, updated_at, version)
+            VALUES (@accountId, 0, 1, NOW(), NOW(), 1)
+            ON CONFLICT (account_id) DO NOTHING;
+            """;
+
+        await using var insertCommand = new NpgsqlCommand(insertSql, connection, transaction);
+        insertCommand.Parameters.AddWithValue("accountId", accountId);
+        await insertCommand.ExecuteNonQueryAsync(cancellationToken);
+
+        return await GetStateRecordForUpdateAsync(connection, transaction, accountId, cancellationToken)
+            ?? new ProgressionState(accountId, 0, 1, 1);
+    }
+
     private static async Task<ProgressionState?> GetStateRecordAsync(
         NpgsqlConnection connection,
         NpgsqlTransaction transaction,
@@ -248,6 +274,34 @@ public sealed class ProgressionService : IProgressionService
             FROM account_progression
             WHERE account_id = @accountId
             LIMIT 1;
+            """;
+
+        await using var command = new NpgsqlCommand(selectSql, connection, transaction);
+        command.Parameters.AddWithValue("accountId", accountId);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken))
+        {
+            return null;
+        }
+
+        return new ProgressionState(
+            reader.GetGuid(0),
+            reader.GetInt64(1),
+            reader.GetInt32(2),
+            reader.GetInt64(3));
+    }
+
+    private static async Task<ProgressionState?> GetStateRecordForUpdateAsync(
+        NpgsqlConnection connection,
+        NpgsqlTransaction transaction,
+        Guid accountId,
+        CancellationToken cancellationToken)
+    {
+        const string selectSql = """
+            SELECT account_id, total_xp, level, version
+            FROM account_progression
+            WHERE account_id = @accountId
+            FOR UPDATE;
             """;
 
         await using var command = new NpgsqlCommand(selectSql, connection, transaction);
@@ -292,7 +346,7 @@ public sealed class ProgressionService : IProgressionService
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
-    private static async Task InsertAwardRecordAsync(
+    private static async Task<bool> TryInsertAwardRecordAsync(
         NpgsqlConnection connection,
         NpgsqlTransaction transaction,
         Guid accountId,
@@ -325,7 +379,9 @@ public sealed class ProgressionService : IProgressionService
                 @difficultyBps,
                 @performanceBonus,
                 @xpAwarded,
-                @createdAt);
+                @createdAt)
+            ON CONFLICT (account_id, match_result_id) DO NOTHING
+            RETURNING xp_awarded;
             """;
 
         await using var command = new NpgsqlCommand(sql, connection, transaction);
@@ -337,7 +393,8 @@ public sealed class ProgressionService : IProgressionService
         command.Parameters.AddWithValue("performanceBonus", performanceBonus);
         command.Parameters.AddWithValue("xpAwarded", xpAwarded);
         command.Parameters.AddWithValue("createdAt", createdAt);
-        await command.ExecuteNonQueryAsync(cancellationToken);
+        var inserted = await command.ExecuteScalarAsync(cancellationToken);
+        return inserted is not null && inserted != DBNull.Value;
     }
 
     private static async Task<ProgressionAwardRecord?> GetAwardRecordAsync(

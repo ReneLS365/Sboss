@@ -110,6 +110,54 @@ public sealed class ProgressionEndpointsTests
         Assert.Equal(HttpStatusCode.OK, unlockedLoadoutResponse.StatusCode);
     }
 
+    [Fact]
+    public async Task ConcurrentAwardsForDifferentMatchResults_DoNotLoseXp()
+    {
+        await _database.ResetAsync();
+        await InsertAcceptedMatchResultAsync("44444444-4444-4444-4444-444444444440");
+        var client = _factory.CreateClient();
+
+        var tasks = new[]
+        {
+            client.PostAsJsonAsync("/api/v1/progression/awards", new PostProgressionAwardRequest(AccountId, AcceptedMatchResultId)),
+            client.PostAsJsonAsync("/api/v1/progression/awards", new PostProgressionAwardRequest(AccountId, Guid.Parse("44444444-4444-4444-4444-444444444440")))
+        };
+
+        var responses = await Task.WhenAll(tasks);
+        Assert.All(responses, response => Assert.Equal(HttpStatusCode.OK, response.StatusCode));
+
+        var progression = await client.GetFromJsonAsync<GetProgressionStateResponse>($"/api/v1/progression/{AccountId}");
+        Assert.NotNull(progression);
+        Assert.Equal(248, progression!.TotalXp);
+        Assert.Equal(2, progression.Level);
+    }
+
+    [Fact]
+    public async Task ConcurrentDuplicateAwards_AreIdempotentWithoutServerError()
+    {
+        await _database.ResetAsync();
+        var client = _factory.CreateClient();
+
+        var duplicateRequests = Enumerable
+            .Range(0, 8)
+            .Select(_ => client.PostAsJsonAsync(
+                "/api/v1/progression/awards",
+                new PostProgressionAwardRequest(AccountId, AcceptedMatchResultId)))
+            .ToArray();
+
+        var responses = await Task.WhenAll(duplicateRequests);
+        Assert.All(responses, response => Assert.Equal(HttpStatusCode.OK, response.StatusCode));
+
+        var payloads = await Task.WhenAll(responses.Select(response => response.Content.ReadFromJsonAsync<PostProgressionAwardResponse>()));
+        Assert.Contains(payloads, payload => payload is not null && payload.Status == "awarded");
+        Assert.Equal(1, payloads.Count(payload => payload is not null && payload.Status == "awarded"));
+        Assert.All(payloads.Where(payload => payload is not null), payload => Assert.Equal(124, payload!.TotalXp));
+
+        var progression = await client.GetFromJsonAsync<GetProgressionStateResponse>($"/api/v1/progression/{AccountId}");
+        Assert.NotNull(progression);
+        Assert.Equal(124, progression!.TotalXp);
+    }
+
     private async Task InsertAcceptedMatchResultAsync(string matchResultId)
     {
         var sql = $"""
