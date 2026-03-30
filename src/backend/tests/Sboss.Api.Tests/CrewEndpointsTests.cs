@@ -374,13 +374,21 @@ public sealed class CrewEndpointsTests
             $"/api/v1/crews/{createdCrew.CrewId}/members",
             new PostCrewMemberAssignmentRequest(OwnerAccountId, LaerlingAccountId, "Laerling"));
 
-        var request = new PostCrewPayoutRequest(OwnerAccountId, 100, "COIN", "crew-race-idempotency", "contract_settlement");
-        var responses = await Task.WhenAll(
-            client.PostAsJsonAsync($"/api/v1/crews/{createdCrew.CrewId}/payouts", request),
-            client.PostAsJsonAsync($"/api/v1/crews/{createdCrew.CrewId}/payouts", request));
+        for (var iteration = 0; iteration < 5; iteration++)
+        {
+            var request = new PostCrewPayoutRequest(
+                OwnerAccountId,
+                100,
+                "COIN",
+                $"crew-race-idempotency-{iteration}",
+                "contract_settlement");
+            var responses = await Task.WhenAll(
+                client.PostAsJsonAsync($"/api/v1/crews/{createdCrew.CrewId}/payouts", request),
+                client.PostAsJsonAsync($"/api/v1/crews/{createdCrew.CrewId}/payouts", request));
 
-        Assert.All(responses, response => Assert.NotEqual(HttpStatusCode.InternalServerError, response.StatusCode));
-        Assert.All(responses, response => Assert.Equal(HttpStatusCode.OK, response.StatusCode));
+            Assert.All(responses, response => Assert.NotEqual(HttpStatusCode.InternalServerError, response.StatusCode));
+            Assert.All(responses, response => Assert.Equal(HttpStatusCode.OK, response.StatusCode));
+        }
     }
 
     private async Task InsertAccountAsync(Guid accountId)

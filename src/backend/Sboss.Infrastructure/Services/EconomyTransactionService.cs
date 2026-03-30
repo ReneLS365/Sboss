@@ -8,6 +8,8 @@ namespace Sboss.Infrastructure.Services;
 public sealed class EconomyTransactionService : IEconomyTransactionService
 {
     private const string UniqueViolationSqlState = "23505";
+    private const int BatchReplayResolveMaxAttempts = 5;
+    private static readonly TimeSpan BatchReplayResolveRetryDelay = TimeSpan.FromMilliseconds(25);
     private readonly NpgsqlDataSource _dataSource;
 
     public EconomyTransactionService(NpgsqlDataSource dataSource)
@@ -101,11 +103,10 @@ public sealed class EconomyTransactionService : IEconomyTransactionService
         var replayResults = new List<EconomyTransactionResult>(normalizedRequests.Count);
         foreach (var normalizedRequest in normalizedRequests)
         {
-            var replayTransactionRecord = await GetTransactionByIdempotencyKeyAsync(
+            var replayTransactionRecord = await WaitForReplayTransactionRecordAsync(
                 replayConnection,
                 replayTransaction,
-                normalizedRequest.AccountId,
-                normalizedRequest.IdempotencyKey,
+                normalizedRequest,
                 cancellationToken);
 
             if (replayTransactionRecord is null)
@@ -121,6 +122,35 @@ public sealed class EconomyTransactionService : IEconomyTransactionService
 
         await replayTransaction.CommitAsync(cancellationToken);
         return replayResults;
+    }
+
+    private static async Task<EconomyTransaction?> WaitForReplayTransactionRecordAsync(
+        NpgsqlConnection replayConnection,
+        NpgsqlTransaction replayTransaction,
+        EconomyMutationRequest normalizedRequest,
+        CancellationToken cancellationToken)
+    {
+        for (var attempt = 0; attempt < BatchReplayResolveMaxAttempts; attempt++)
+        {
+            var replayTransactionRecord = await GetTransactionByIdempotencyKeyAsync(
+                replayConnection,
+                replayTransaction,
+                normalizedRequest.AccountId,
+                normalizedRequest.IdempotencyKey,
+                cancellationToken);
+
+            if (replayTransactionRecord is not null)
+            {
+                return replayTransactionRecord;
+            }
+
+            if (attempt < BatchReplayResolveMaxAttempts - 1)
+            {
+                await Task.Delay(BatchReplayResolveRetryDelay, cancellationToken);
+            }
+        }
+
+        return null;
     }
 
     private static EconomyMutationRequest NormalizeRequest(EconomyMutationRequest request)
