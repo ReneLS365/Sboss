@@ -509,12 +509,21 @@ app.MapPost("/api/v1/fog/{accountId:guid}/{levelSeedId:guid}/reveal", async (
     Guid accountId,
     Guid levelSeedId,
     PostFogRevealRequest request,
+    IAccountRepository accountRepository,
+    ILevelSeedRepository levelSeedRepository,
     IFogOfWarRepository fogRepository,
     CancellationToken cancellationToken) =>
 {
     if (string.IsNullOrWhiteSpace(request.RevealKey))
     {
         return Results.ValidationProblem(new Dictionary<string, string[]> { ["revealKey"] = new[] { "RevealKey is required." } });
+    }
+
+    var account = await accountRepository.GetByIdAsync(accountId, cancellationToken);
+    var levelSeed = await levelSeedRepository.GetByIdAsync(levelSeedId, cancellationToken);
+    if (account is null || levelSeed is null)
+    {
+        return Results.NotFound(new { error = "Account or level seed does not exist." });
     }
 
     var normalizedRevealKey = request.RevealKey.Trim().ToLowerInvariant();

@@ -113,6 +113,19 @@ public sealed class LoadoutAndFogEndpointsTests
     }
 
     [Fact]
+    public async Task Fog_Reveal_WithUnknownReferences_ReturnsNotFound()
+    {
+        await _database.ResetAsync();
+        var client = _factory.CreateClient();
+
+        var unknownAccountId = Guid.Parse("ffffffff-ffff-ffff-ffff-ffffffffffff");
+        var unknownSeedId = Guid.Parse("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee");
+
+        var response = await client.PostAsJsonAsync($"/api/v1/fog/{unknownAccountId}/{unknownSeedId}/reveal", new PostFogRevealRequest("zone_a"));
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
     public async Task MatchResults_FailsPlacementWhenComponentMissingFromApprovedLoadout()
     {
         await _database.ResetAsync();
