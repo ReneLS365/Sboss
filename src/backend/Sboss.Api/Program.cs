@@ -16,6 +16,7 @@ using Sboss.Infrastructure.Repositories;
 using Sboss.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+const long WearPerInvalidSequenceEventBps = 2_500;
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -121,7 +122,11 @@ app.MapPost("/api/v1/match-results", async (
     }
 
     var remainingCapacityForSequence = await yardCapacityProvider.GetRemainingCapacityAsync(request.LevelSeedId, cancellationToken);
-    var inventoryRemainingByItem = new Dictionary<string, int>(snapshot.InventoryQuantities, StringComparer.OrdinalIgnoreCase);
+    var inventoryRemainingByItem = snapshot.InventoryByItemCode.ToDictionary(
+        entry => entry.Key,
+        entry => entry.Value.UsableQuantity,
+        StringComparer.OrdinalIgnoreCase);
+    var wearByItemCode = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
     var validationResults = new List<CommandValidationResult>(request.PlacementIntents.Count);
     var acceptedComponentIdsInSequence = new List<string>(request.PlacementIntents.Count);
     foreach (var intent in request.PlacementIntents)
@@ -180,6 +185,17 @@ app.MapPost("/api/v1/match-results", async (
         }
 
         validationResults.Add(validation);
+
+        if (!validation.Accepted &&
+            string.Equals(validation.Code, "scaffold_assembly_invalid_sequence", StringComparison.Ordinal) &&
+            componentCatalog.TryGetComponent(intent.ComponentId, out var knownComponent) &&
+            snapshot.InventoryByItemCode.TryGetValue(knownComponent.ItemCode, out var inventoryState) &&
+            inventoryState.OwnedQuantity > 0)
+        {
+            wearByItemCode[knownComponent.ItemCode] = wearByItemCode.TryGetValue(knownComponent.ItemCode, out var totalWearBps)
+                ? totalWearBps + WearPerInvalidSequenceEventBps
+                : WearPerInvalidSequenceEventBps;
+        }
     }
 
     var scoring = scoringEngine.Compute(levelSeed!, validationResults.Select(result => result.Accepted).ToArray());
@@ -212,6 +228,7 @@ app.MapPost("/api/v1/match-results", async (
     {
         var validationStatus = await validator.ValidateAsync(matchResult, cancellationToken);
         matchResult.ApplyValidation(validationStatus, DateTimeOffset.UtcNow);
+        await yardRepository.ApplyWearAsync(request.AccountId, wearByItemCode, cancellationToken);
         var saved = await repository.SaveAsync(matchResult, cancellationToken);
         return Results.Created(
             $"/api/v1/match-results/{saved.MatchResultId}",
@@ -247,11 +264,22 @@ app.MapGet("/api/v1/yard/{accountId:guid}", async (
 
     var inventory = supportedComponents
         .OrderBy(component => component.ItemCode, StringComparer.OrdinalIgnoreCase)
-        .Select(component => new YardInventoryItemResponse(
-            component.ItemCode,
-            snapshot.InventoryQuantities.TryGetValue(component.ItemCode, out var quantity) ? quantity : 0,
-            component.UnitCapacity,
-            component.PurchaseCost))
+        .Select(component =>
+        {
+            var inventoryState = snapshot.InventoryByItemCode.TryGetValue(component.ItemCode, out var item)
+                ? item
+                : new YardInventoryState(0, 0, 0, 0);
+
+            return new YardInventoryItemResponse(
+                component.ItemCode,
+                inventoryState.OwnedQuantity,
+                inventoryState.OwnedQuantity,
+                inventoryState.UsableQuantity,
+                inventoryState.DamagedQuantity,
+                inventoryState.TotalIntegrityBps,
+                component.UnitCapacity,
+                component.PurchaseCost);
+        })
         .ToArray();
 
     return Results.Ok(new GetYardStateResponse(

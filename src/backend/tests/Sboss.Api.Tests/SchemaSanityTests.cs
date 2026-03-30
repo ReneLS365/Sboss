@@ -10,6 +10,7 @@ public sealed class SchemaSanityTests
     private const string ContractJobApplicationsMigrationFileName = "0004_phase_1f_contract_job_applications.sql";
     private const string CrewSplitMigrationFileName = "0006_phase_3b_akkord_crew_split.sql";
     private const string CrewPayoutSnapshotsMigrationFileName = "0007_phase_3b_crew_payout_settlement_snapshots.sql";
+    private const string WearAndTearMigrationFileName = "0008_phase_3c_wear_and_tear.sql";
 
     [Fact]
     public void BaselineMigrationContainsPhase1BTables()
@@ -95,10 +96,20 @@ public sealed class SchemaSanityTests
     }
 
     [Fact]
+    public void WearAndTearMigrationContainsIntegrityColumn()
+    {
+        var migrationPath = ResolveMigrationPath(WearAndTearMigrationFileName);
+        var migration = File.ReadAllText(migrationPath);
+
+        Assert.Contains("total_integrity_bps", migration, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("inventory_items_total_integrity_bps_non_negative", migration, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void SchemaSnapshotMatchesBaselineMigration()
     {
         var schema = NormalizeWhitespace(File.ReadAllText(ResolveSchemaPath()));
-        var requiredStatements = new[] { BaselineMigrationFileName, EconomyMigrationFileName, ContractJobsMigrationFileName, ContractJobApplicationsMigrationFileName, CrewSplitMigrationFileName, CrewPayoutSnapshotsMigrationFileName }
+        var requiredStatements = new[] { BaselineMigrationFileName, EconomyMigrationFileName, ContractJobsMigrationFileName, ContractJobApplicationsMigrationFileName, CrewSplitMigrationFileName, CrewPayoutSnapshotsMigrationFileName, WearAndTearMigrationFileName }
             .Select(ResolveMigrationPath)
             .SelectMany(path => File.ReadAllText(path)
                 .Split(";", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
@@ -169,6 +180,7 @@ public sealed class SchemaSanityTests
         Assert.Contains("0004_phase_1f_contract_job_applications.sql", fixture, StringComparison.Ordinal);
         Assert.Contains("0006_phase_3b_akkord_crew_split.sql", fixture, StringComparison.Ordinal);
         Assert.Contains("0007_phase_3b_crew_payout_settlement_snapshots.sql", fixture, StringComparison.Ordinal);
+        Assert.Contains("0008_phase_3c_wear_and_tear.sql", fixture, StringComparison.Ordinal);
         Assert.Contains("src/backend/db/seed.sql", fixture, StringComparison.Ordinal);
         Assert.Contains("DROP SCHEMA IF EXISTS public CASCADE;", fixture, StringComparison.Ordinal);
         Assert.Contains("CREATE SCHEMA public;", fixture, StringComparison.Ordinal);
@@ -187,6 +199,7 @@ public sealed class SchemaSanityTests
         var contractJobApplicationsIndex = fixture.IndexOf("0004_phase_1f_contract_job_applications.sql", StringComparison.Ordinal);
         var crewSplitIndex = fixture.IndexOf("0006_phase_3b_akkord_crew_split.sql", StringComparison.Ordinal);
         var crewPayoutSnapshotsIndex = fixture.IndexOf("0007_phase_3b_crew_payout_settlement_snapshots.sql", StringComparison.Ordinal);
+        var wearAndTearIndex = fixture.IndexOf("0008_phase_3c_wear_and_tear.sql", StringComparison.Ordinal);
         var targetConnectionIndex = fixture.IndexOf("targetConnection", StringComparison.Ordinal);
         var seedIndex = fixture.IndexOf("src/backend/db/seed.sql", StringComparison.Ordinal);
 
@@ -198,7 +211,8 @@ public sealed class SchemaSanityTests
         Assert.True(contractJobApplicationsIndex > contractJobsIndex, "Fixture must apply the 1F contract job applications migration after the 1E contract jobs migration.");
         Assert.True(crewSplitIndex > contractJobApplicationsIndex, "Fixture must apply the 3B crew split migration after the 1F contract job applications migration.");
         Assert.True(crewPayoutSnapshotsIndex > crewSplitIndex, "Fixture must apply the payout snapshot migration after the 3B crew split migration.");
-        Assert.True(seedIndex > crewPayoutSnapshotsIndex, "Fixture must load seed.sql only after the full migration chain.");
+        Assert.True(wearAndTearIndex > crewPayoutSnapshotsIndex, "Fixture must apply the 3C wear and tear migration after the 3B payout snapshot migration.");
+        Assert.True(seedIndex > wearAndTearIndex, "Fixture must load seed.sql only after the full migration chain.");
     }
 
     private static string ResolveSchemaPath()

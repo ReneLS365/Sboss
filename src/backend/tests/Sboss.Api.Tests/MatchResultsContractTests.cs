@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 using Sboss.Contracts.Commands;
 using Sboss.Contracts.MatchResults;
+using Sboss.Contracts.Yard;
 
 namespace Sboss.Api.Tests;
 
@@ -23,6 +24,7 @@ public sealed class MatchResultsContractTests
     [Fact]
     public async Task PostMatchResult_ReturnsCreatedAndValidationStatus()
     {
+        await _database.ResetAsync();
         var client = _factory.CreateClient();
         var request = new PostMatchResultRequest(
             Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
@@ -49,6 +51,7 @@ public sealed class MatchResultsContractTests
     [Fact]
     public async Task PostMatchResult_WithInvalidDomainPayload_ReturnsBadRequest()
     {
+        await _database.ResetAsync();
         var client = _factory.CreateClient();
         var request = new PostMatchResultRequest(
             Guid.Empty,
@@ -65,6 +68,7 @@ public sealed class MatchResultsContractTests
     [Fact]
     public async Task PostMatchResult_WithUnknownReferences_ReturnsBadRequest()
     {
+        await _database.ResetAsync();
         var client = _factory.CreateClient();
         var request = new PostMatchResultRequest(
             Guid.Parse("99999999-9999-9999-9999-999999999999"),
@@ -81,6 +85,7 @@ public sealed class MatchResultsContractTests
     [Fact]
     public async Task PostMatchResult_IgnoresCallerReportedScoreAndReturnsAuthoritativeScore()
     {
+        await _database.ResetAsync();
         var client = _factory.CreateClient();
         var request = new PostMatchResultRequest(
             Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
@@ -103,6 +108,7 @@ public sealed class MatchResultsContractTests
     [Fact]
     public async Task PostMatchResult_IsDeterministicForSameAuthoritativeInput()
     {
+        await _database.ResetAsync();
         var client = _factory.CreateClient();
         var seedId = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
         var request = new PostMatchResultRequest(
@@ -132,6 +138,7 @@ public sealed class MatchResultsContractTests
     [Fact]
     public async Task PostMatchResult_WithNullPlacementIntentEntry_ReturnsBadRequest()
     {
+        await _database.ResetAsync();
         var client = _factory.CreateClient();
         var payload = """
         {
@@ -154,6 +161,7 @@ public sealed class MatchResultsContractTests
     [Fact]
     public async Task PostMatchResult_RejectsPlacementsThatExceedSequenceCapacity()
     {
+        await _database.ResetAsync();
         var client = _factory.CreateClient();
         var seedId = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
         var request = new PostMatchResultRequest(
@@ -179,6 +187,7 @@ public sealed class MatchResultsContractTests
     [Fact]
     public async Task PostMatchResult_RejectsOutOfOrderAssemblySequenceUsingServerAuthoritativeRules()
     {
+        await _database.ResetAsync();
         var client = _factory.CreateClient();
         var seedId = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
         var request = new PostMatchResultRequest(
@@ -204,6 +213,7 @@ public sealed class MatchResultsContractTests
     [Fact]
     public async Task PostMatchResult_RejectsPlacementsWhenOwnedInventoryIsInsufficient()
     {
+        await _database.ResetAsync();
         var accountId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
         await SetInventoryQuantityAsync(accountId, "scaffold_blue_frame", 0);
 
@@ -233,6 +243,131 @@ public sealed class MatchResultsContractTests
         }
     }
 
+    [Fact]
+    public async Task PostMatchResult_InvalidSequenceAppliesWearToOwnedKnownComponent()
+    {
+        await _database.ResetAsync();
+        var client = _factory.CreateClient();
+        var seedId = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
+        var request = new PostMatchResultRequest(
+            Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+            Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc"),
+            seedId,
+            CreatePlacementIntents(seedId, "scaffold_yellow_deck"),
+            null);
+
+        var response = await client.PostAsJsonAsync("/api/v1/match-results", request);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var yard = await client.GetFromJsonAsync<GetYardStateResponse>("/api/v1/yard/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        Assert.NotNull(yard);
+        var yellow = yard!.Inventory.Single(item => item.ItemCode == "scaffold_yellow_deck");
+        Assert.Equal(1, yellow.OwnedQuantity);
+        Assert.Equal(7500, yellow.TotalIntegrityBps);
+        Assert.Equal(0, yellow.UsableQuantity);
+        Assert.Equal(1, yellow.DamagedQuantity);
+    }
+
+    [Fact]
+    public async Task PostMatchResult_CapacityOverflowDoesNotApplyWear()
+    {
+        await _database.ResetAsync();
+        var client = _factory.CreateClient();
+        var seedId = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
+        var request = new PostMatchResultRequest(
+            Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+            Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc"),
+            seedId,
+            CreatePlacementIntents(seedId, "scaffold_blue_frame", "scaffold_blue_frame", "scaffold_blue_frame"),
+            null);
+
+        var response = await client.PostAsJsonAsync("/api/v1/match-results", request);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var yard = await client.GetFromJsonAsync<GetYardStateResponse>("/api/v1/yard/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        Assert.NotNull(yard);
+        var blue = yard!.Inventory.Single(item => item.ItemCode == "scaffold_blue_frame");
+        Assert.Equal(30000, blue.TotalIntegrityBps);
+    }
+
+    [Fact]
+    public async Task PostMatchResult_InventoryInsufficientDoesNotApplyWear()
+    {
+        await _database.ResetAsync();
+        var accountId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        await SetInventoryStateAsync(accountId, "scaffold_blue_frame", 0, 0);
+        var client = _factory.CreateClient();
+        var seedId = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
+        var request = new PostMatchResultRequest(
+            accountId,
+            Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc"),
+            seedId,
+            CreatePlacementIntents(seedId, "scaffold_blue_frame"),
+            null);
+
+        var response = await client.PostAsJsonAsync("/api/v1/match-results", request);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<PostMatchResultResponse>();
+        Assert.NotNull(body);
+        Assert.Equal("inventory_insufficient", body!.ValidationResults[0].Code);
+
+        var yard = await client.GetFromJsonAsync<GetYardStateResponse>($"/api/v1/yard/{accountId}");
+        Assert.NotNull(yard);
+        var blue = yard!.Inventory.Single(item => item.ItemCode == "scaffold_blue_frame");
+        Assert.Equal(0, blue.TotalIntegrityBps);
+        Assert.Equal(0, blue.OwnedQuantity);
+    }
+
+    [Fact]
+    public async Task PostMatchResult_UnknownComponentDoesNotApplyWear()
+    {
+        await _database.ResetAsync();
+        var client = _factory.CreateClient();
+        var seedId = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
+        var request = new PostMatchResultRequest(
+            Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+            Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc"),
+            seedId,
+            CreatePlacementIntents(seedId, "component-not-present"),
+            null);
+
+        var response = await client.PostAsJsonAsync("/api/v1/match-results", request);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var yard = await client.GetFromJsonAsync<GetYardStateResponse>("/api/v1/yard/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        Assert.NotNull(yard);
+        var blue = yard!.Inventory.Single(item => item.ItemCode == "scaffold_blue_frame");
+        Assert.Equal(30000, blue.TotalIntegrityBps);
+    }
+
+    [Fact]
+    public async Task PostMatchResult_RepeatedInvalidSequenceWearLowersUsableBelowOwned()
+    {
+        await _database.ResetAsync();
+        var client = _factory.CreateClient();
+        var seedId = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
+        var request = new PostMatchResultRequest(
+            Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+            Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc"),
+            seedId,
+            CreatePlacementIntents(seedId, "scaffold_yellow_deck"),
+            null);
+
+        for (var i = 0; i < 5; i++)
+        {
+            var response = await client.PostAsJsonAsync("/api/v1/match-results", request);
+            Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        }
+
+        var yard = await client.GetFromJsonAsync<GetYardStateResponse>("/api/v1/yard/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        Assert.NotNull(yard);
+        var yellow = yard!.Inventory.Single(item => item.ItemCode == "scaffold_yellow_deck");
+        Assert.Equal(1, yellow.OwnedQuantity);
+        Assert.Equal(0, yellow.TotalIntegrityBps);
+        Assert.Equal(0, yellow.UsableQuantity);
+        Assert.Equal(1, yellow.DamagedQuantity);
+    }
+
     private async Task SetInventoryQuantityAsync(Guid accountId, string itemCode, int quantity)
     {
         await using var connection = new NpgsqlConnection(_database.ConnectionString);
@@ -241,6 +376,7 @@ public sealed class MatchResultsContractTests
         command.CommandText = """
             UPDATE inventory_items
             SET quantity = @quantity,
+                total_integrity_bps = @quantity * 10000,
                 updated_at = NOW(),
                 version = version + 1
             WHERE account_id = @accountId
@@ -249,6 +385,27 @@ public sealed class MatchResultsContractTests
         command.Parameters.AddWithValue("accountId", accountId);
         command.Parameters.AddWithValue("itemCode", itemCode);
         command.Parameters.AddWithValue("quantity", quantity);
+        await command.ExecuteNonQueryAsync();
+    }
+
+    private async Task SetInventoryStateAsync(Guid accountId, string itemCode, int quantity, long totalIntegrityBps)
+    {
+        await using var connection = new NpgsqlConnection(_database.ConnectionString);
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE inventory_items
+            SET quantity = @quantity,
+                total_integrity_bps = @totalIntegrityBps,
+                updated_at = NOW(),
+                version = version + 1
+            WHERE account_id = @accountId
+              AND item_code = @itemCode;
+            """;
+        command.Parameters.AddWithValue("accountId", accountId);
+        command.Parameters.AddWithValue("itemCode", itemCode);
+        command.Parameters.AddWithValue("quantity", quantity);
+        command.Parameters.AddWithValue("totalIntegrityBps", totalIntegrityBps);
         await command.ExecuteNonQueryAsync();
     }
 

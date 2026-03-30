@@ -8,8 +8,8 @@ namespace Sboss.Infrastructure.Services;
 public sealed class EconomyTransactionService : IEconomyTransactionService
 {
     private const string UniqueViolationSqlState = "23505";
-    private const int BatchReplayResolveMaxAttempts = 5;
-    private static readonly TimeSpan BatchReplayResolveRetryDelay = TimeSpan.FromMilliseconds(25);
+    private const int BatchReplayResolveMaxAttempts = 40;
+    private static readonly TimeSpan BatchReplayResolveRetryDelay = TimeSpan.FromMilliseconds(50);
     private readonly NpgsqlDataSource _dataSource;
 
     public EconomyTransactionService(NpgsqlDataSource dataSource)

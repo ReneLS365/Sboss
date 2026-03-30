@@ -14,16 +14,16 @@ INSERT INTO level_seeds (level_seed_id, seed_value, biome, template, objective, 
 VALUES ('dddddddd-dddd-dddd-dddd-dddddddddddd', 'SBOSS-SEED-001', 'urban', 'template_alpha', 'reach_target', '{"modifiers":["none"]}', 120000, 90000, 1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')
 ON CONFLICT (level_seed_id) DO NOTHING;
 
-INSERT INTO inventory_items (inventory_item_id, account_id, item_code, quantity, created_at, updated_at, version)
-VALUES ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'starter_token', 1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 1)
+INSERT INTO inventory_items (inventory_item_id, account_id, item_code, quantity, total_integrity_bps, created_at, updated_at, version)
+VALUES ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'starter_token', 1, 10000, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 1)
 ON CONFLICT (inventory_item_id) DO NOTHING;
 
-INSERT INTO inventory_items (inventory_item_id, account_id, item_code, quantity, created_at, updated_at, version)
-VALUES ('11111111-1111-1111-1111-111111111111', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'scaffold_blue_frame', 3, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 1)
+INSERT INTO inventory_items (inventory_item_id, account_id, item_code, quantity, total_integrity_bps, created_at, updated_at, version)
+VALUES ('11111111-1111-1111-1111-111111111111', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'scaffold_blue_frame', 3, 30000, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 1)
 ON CONFLICT (inventory_item_id) DO NOTHING;
 
-INSERT INTO inventory_items (inventory_item_id, account_id, item_code, quantity, created_at, updated_at, version)
-VALUES ('22222222-2222-2222-2222-222222222222', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'scaffold_yellow_deck', 1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 1)
+INSERT INTO inventory_items (inventory_item_id, account_id, item_code, quantity, total_integrity_bps, created_at, updated_at, version)
+VALUES ('22222222-2222-2222-2222-222222222222', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'scaffold_yellow_deck', 1, 10000, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 1)
 ON CONFLICT (inventory_item_id) DO NOTHING;
 
 INSERT INTO yard_states (account_id, max_capacity, created_at, updated_at, version)

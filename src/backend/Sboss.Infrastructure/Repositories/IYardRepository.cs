@@ -11,6 +11,7 @@ public interface IYardRepository
         int quantity,
         IReadOnlyCollection<AuthoritativeComponentDefinition> supportedComponents,
         CancellationToken cancellationToken);
+    Task ApplyWearAsync(Guid accountId, IReadOnlyDictionary<string, long> wearByItemCode, CancellationToken cancellationToken);
 }
 
 public sealed record YardStateSnapshot(
@@ -19,7 +20,13 @@ public sealed record YardStateSnapshot(
     int UsedCapacity,
     int RemainingCapacity,
     long CoinBalance,
-    IReadOnlyDictionary<string, int> InventoryQuantities);
+    IReadOnlyDictionary<string, YardInventoryState> InventoryByItemCode);
+
+public sealed record YardInventoryState(
+    int OwnedQuantity,
+    int UsableQuantity,
+    int DamagedQuantity,
+    long TotalIntegrityBps);
 
 public sealed record PurchaseResult(
     bool Success,
