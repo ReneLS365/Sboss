@@ -7,6 +7,8 @@ namespace Sboss.Infrastructure.Services;
 public sealed class CrewService : ICrewService
 {
     private const int CrewShareRatioBps = 6000;
+    private const int EconomyCurrencyCodeMaxLength = 32;
+    private const int EconomyMutationTextMaxLength = 128;
     private readonly NpgsqlDataSource _dataSource;
     private readonly IEconomyTransactionService _economyTransactionService;
 
@@ -218,6 +220,7 @@ public sealed class CrewService : ICrewService
                     .ToArray());
             settlement = existingSettlement;
             payoutMutations = BuildPayoutMutations(settlement, split, crewId);
+            EnsurePayoutMutationsAreValid(payoutMutations);
         }
         else
         {
@@ -332,9 +335,11 @@ public sealed class CrewService : ICrewService
             throw new CrewServiceException(CrewServiceFailureReason.InvalidRequest, "Currency code is required.");
         }
 
-        if (normalized.Length > 32)
+        if (normalized.Length > EconomyCurrencyCodeMaxLength)
         {
-            throw new CrewServiceException(CrewServiceFailureReason.InvalidRequest, "Currency code must be 32 characters or fewer.");
+            throw new CrewServiceException(
+                CrewServiceFailureReason.InvalidRequest,
+                $"Currency code must be {EconomyCurrencyCodeMaxLength} characters or fewer.");
         }
 
         return normalized;
@@ -367,11 +372,43 @@ public sealed class CrewService : ICrewService
 
     private static void EnsurePayoutMutationsAreValid(IReadOnlyList<EconomyMutationRequest> mutations)
     {
-        if (mutations.Count == 0 || mutations.Any(mutation => mutation.AmountDelta == 0))
+        if (mutations.Count == 0)
         {
             throw new CrewServiceException(
                 CrewServiceFailureReason.InvalidRequest,
-                "Gross amount must produce non-zero payout mutations for all settlement entries.");
+                "Gross amount must produce at least one payout mutation.");
+        }
+
+        foreach (var mutation in mutations)
+        {
+            if (mutation.AccountId == Guid.Empty)
+            {
+                throw new CrewServiceException(CrewServiceFailureReason.InvalidRequest, "Payout mutation account ID is required.");
+            }
+
+            if (mutation.AmountDelta == 0)
+            {
+                throw new CrewServiceException(
+                    CrewServiceFailureReason.InvalidRequest,
+                    "Gross amount must produce non-zero payout mutations for all settlement entries.");
+            }
+
+            ValidateMutationTextField(mutation.CurrencyCode, "Currency code", EconomyCurrencyCodeMaxLength);
+            ValidateMutationTextField(mutation.IdempotencyKey, "Idempotency key", EconomyMutationTextMaxLength);
+            ValidateMutationTextField(mutation.Reason, "Reason", EconomyMutationTextMaxLength);
+        }
+    }
+
+    private static void ValidateMutationTextField(string value, string label, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new CrewServiceException(CrewServiceFailureReason.InvalidRequest, $"{label} is required.");
+        }
+
+        if (value.Length > maxLength)
+        {
+            throw new CrewServiceException(CrewServiceFailureReason.InvalidRequest, $"{label} must be {maxLength} characters or fewer.");
         }
     }
 
@@ -384,7 +421,7 @@ public sealed class CrewService : ICrewService
     {
         if (settlement.CrewId != crewId ||
             settlement.GrossAmount != grossAmount ||
-            !string.Equals(settlement.CurrencyCode, currencyCode, StringComparison.Ordinal) ||
+            !string.Equals(NormalizeCurrencyCode(settlement.CurrencyCode), currencyCode, StringComparison.Ordinal) ||
             !string.Equals(settlement.Reason, reason, StringComparison.Ordinal))
         {
             throw new CrewServiceException(
