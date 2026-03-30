@@ -12,6 +12,7 @@ public sealed class SchemaSanityTests
     private const string CrewPayoutSnapshotsMigrationFileName = "0007_phase_3b_crew_payout_settlement_snapshots.sql";
     private const string WearAndTearMigrationFileName = "0008_phase_3c_wear_and_tear.sql";
     private const string LoadoutAndFogMigrationFileName = "0009_phase_3d_loadout_and_fog_of_war.sql";
+    private const string ProgressionMigrationFileName = "0010_phase_3e_xp_and_progression.sql";
 
     [Fact]
     public void BaselineMigrationContainsPhase1BTables()
@@ -120,10 +121,21 @@ public sealed class SchemaSanityTests
     }
 
     [Fact]
+    public void ProgressionMigrationContainsRequiredTables()
+    {
+        var migrationPath = ResolveMigrationPath(ProgressionMigrationFileName);
+        var migration = File.ReadAllText(migrationPath);
+
+        Assert.Contains("CREATE TABLE IF NOT EXISTS account_progression", migration, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("CREATE TABLE IF NOT EXISTS progression_xp_awards", migration, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("progression_xp_awards_unique_match_per_account", migration, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void SchemaSnapshotMatchesBaselineMigration()
     {
         var schema = NormalizeWhitespace(File.ReadAllText(ResolveSchemaPath()));
-        var requiredStatements = new[] { BaselineMigrationFileName, EconomyMigrationFileName, ContractJobsMigrationFileName, ContractJobApplicationsMigrationFileName, CrewSplitMigrationFileName, CrewPayoutSnapshotsMigrationFileName, WearAndTearMigrationFileName, LoadoutAndFogMigrationFileName }
+        var requiredStatements = new[] { BaselineMigrationFileName, EconomyMigrationFileName, ContractJobsMigrationFileName, ContractJobApplicationsMigrationFileName, CrewSplitMigrationFileName, CrewPayoutSnapshotsMigrationFileName, WearAndTearMigrationFileName, LoadoutAndFogMigrationFileName, ProgressionMigrationFileName }
             .Select(ResolveMigrationPath)
             .SelectMany(path => File.ReadAllText(path)
                 .Split(";", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
@@ -196,6 +208,7 @@ public sealed class SchemaSanityTests
         Assert.Contains("0007_phase_3b_crew_payout_settlement_snapshots.sql", fixture, StringComparison.Ordinal);
         Assert.Contains("0008_phase_3c_wear_and_tear.sql", fixture, StringComparison.Ordinal);
         Assert.Contains("0009_phase_3d_loadout_and_fog_of_war.sql", fixture, StringComparison.Ordinal);
+        Assert.Contains("0010_phase_3e_xp_and_progression.sql", fixture, StringComparison.Ordinal);
         Assert.Contains("src/backend/db/seed.sql", fixture, StringComparison.Ordinal);
         Assert.Contains("DROP SCHEMA IF EXISTS public CASCADE;", fixture, StringComparison.Ordinal);
         Assert.Contains("CREATE SCHEMA public;", fixture, StringComparison.Ordinal);
@@ -216,6 +229,7 @@ public sealed class SchemaSanityTests
         var crewPayoutSnapshotsIndex = fixture.IndexOf("0007_phase_3b_crew_payout_settlement_snapshots.sql", StringComparison.Ordinal);
         var wearAndTearIndex = fixture.IndexOf("0008_phase_3c_wear_and_tear.sql", StringComparison.Ordinal);
         var loadoutAndFogIndex = fixture.IndexOf("0009_phase_3d_loadout_and_fog_of_war.sql", StringComparison.Ordinal);
+        var progressionIndex = fixture.IndexOf("0010_phase_3e_xp_and_progression.sql", StringComparison.Ordinal);
         var targetConnectionIndex = fixture.IndexOf("targetConnection", StringComparison.Ordinal);
         var seedIndex = fixture.IndexOf("src/backend/db/seed.sql", StringComparison.Ordinal);
 
@@ -229,7 +243,8 @@ public sealed class SchemaSanityTests
         Assert.True(crewPayoutSnapshotsIndex > crewSplitIndex, "Fixture must apply the payout snapshot migration after the 3B crew split migration.");
         Assert.True(wearAndTearIndex > crewPayoutSnapshotsIndex, "Fixture must apply the 3C wear and tear migration after the 3B payout snapshot migration.");
         Assert.True(loadoutAndFogIndex > wearAndTearIndex, "Fixture must apply the 3D loadout/fog migration after the 3C wear and tear migration.");
-        Assert.True(seedIndex > loadoutAndFogIndex, "Fixture must load seed.sql only after the full migration chain.");
+        Assert.True(progressionIndex > loadoutAndFogIndex, "Fixture must apply the 3E progression migration after the 3D loadout/fog migration.");
+        Assert.True(seedIndex > progressionIndex, "Fixture must load seed.sql only after the full migration chain.");
     }
 
     private static string ResolveSchemaPath()

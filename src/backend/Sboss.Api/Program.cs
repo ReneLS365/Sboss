@@ -12,6 +12,7 @@ using Sboss.Contracts.Yard;
 using Sboss.Contracts.Crews;
 using Sboss.Contracts.Loadout;
 using Sboss.Contracts.FogOfWar;
+using Sboss.Contracts.Progression;
 using Sboss.Domain.Entities;
 using Sboss.Infrastructure;
 using Sboss.Infrastructure.Repositories;
@@ -46,6 +47,70 @@ app.MapGet("/api/v1/level-seeds/{seedId:guid}", async (Guid seedId, ILevelSeedRe
 {
     var seed = await repository.GetByIdAsync(seedId, cancellationToken);
     return seed is null ? Results.NotFound() : Results.Ok(MapLevelSeed(seed));
+});
+
+app.MapGet("/api/v1/progression/{accountId:guid}", async (
+    Guid accountId,
+    IProgressionService progressionService,
+    CancellationToken cancellationToken) =>
+{
+    try
+    {
+        var state = await progressionService.GetStateAsync(accountId, cancellationToken);
+        return Results.Ok(new GetProgressionStateResponse(
+            state.AccountId,
+            state.TotalXp,
+            state.Level,
+            progressionService.GetNextLevelXpRequired(state.TotalXp),
+            progressionService.GetUnlockedTemplates(state.Level)));
+    }
+    catch (InvalidOperationException exception) when (exception.Message.Contains("does not exist", StringComparison.OrdinalIgnoreCase))
+    {
+        return Results.NotFound(new { error = exception.Message });
+    }
+    catch (InvalidOperationException exception)
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["progression"] = new[] { exception.Message }
+        });
+    }
+});
+
+app.MapPost("/api/v1/progression/awards", async (
+    PostProgressionAwardRequest request,
+    IProgressionService progressionService,
+    CancellationToken cancellationToken) =>
+{
+    try
+    {
+        var result = await progressionService.AwardFromMatchResultAsync(request.AccountId, request.MatchResultId, cancellationToken);
+        return Results.Ok(new PostProgressionAwardResponse(
+            result.AccountId,
+            result.MatchResultId,
+            result.XpAwarded,
+            result.TotalXp,
+            result.Level,
+            result.LeveledUp,
+            result.IsIdempotentReplay ? "idempotent_replay" : "awarded"));
+    }
+    catch (InvalidOperationException exception) when (exception.Message.Contains("does not exist", StringComparison.OrdinalIgnoreCase))
+    {
+        return Results.NotFound(new { error = exception.Message });
+    }
+    catch (InvalidOperationException exception) when (
+        exception.Message.Contains("does not belong", StringComparison.OrdinalIgnoreCase) ||
+        exception.Message.Contains("accepted match results", StringComparison.OrdinalIgnoreCase))
+    {
+        return Results.Conflict(new { error = exception.Message });
+    }
+    catch (InvalidOperationException exception)
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["progression"] = new[] { exception.Message }
+        });
+    }
 });
 
 app.MapPost("/api/v1/match-results", async (
@@ -423,6 +488,7 @@ app.MapPost("/api/v1/loadout/{accountId:guid}/{levelSeedId:guid}", async (
     ILoadoutRepository loadoutRepository,
     ILevelSeedRepository levelSeedRepository,
     IAccountRepository accountRepository,
+    IProgressionService progressionService,
     IAuthoritativeComponentCatalog componentCatalog,
     IAuthoritativeLoadoutRequirementProvider requirementProvider,
     CancellationToken cancellationToken) =>
@@ -432,6 +498,12 @@ app.MapPost("/api/v1/loadout/{accountId:guid}/{levelSeedId:guid}", async (
     if (account is null || levelSeed is null)
     {
         return Results.NotFound(new { error = "Account or level seed does not exist." });
+    }
+
+    var progression = await progressionService.GetStateAsync(accountId, cancellationToken);
+    if (!progressionService.IsTemplateUnlocked(levelSeed.Template, progression.Level))
+    {
+        return Results.StatusCode(StatusCodes.Status403Forbidden);
     }
 
     if (request.Items is null || request.Items.Count == 0)

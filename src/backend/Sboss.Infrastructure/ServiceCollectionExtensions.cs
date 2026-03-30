@@ -37,6 +37,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAuthoritativeComponentCapacityProvider, AuthoritativeComponentCapacityProvider>();
         services.AddScoped<IAuthoritativeComponentCatalog, AuthoritativeComponentCatalog>();
         services.AddScoped<IAuthoritativeLoadoutRequirementProvider, AuthoritativeLoadoutRequirementProvider>();
+        services.AddScoped<IProgressionService, ProgressionService>();
         return services;
     }
 }
