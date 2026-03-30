@@ -183,7 +183,7 @@ public sealed class CrewService : ICrewService
             throw new CrewServiceException(CrewServiceFailureReason.InvalidRequest, "Actor account ID is required.");
         }
 
-        var normalizedCurrencyCode = NormalizeTrimmedValue(currencyCode, nameof(currencyCode), "Currency code");
+        var normalizedCurrencyCode = NormalizeCurrencyCode(currencyCode);
         var normalizedIdempotencyKey = NormalizeTrimmedValue(idempotencyKey, nameof(idempotencyKey), "Idempotency key");
         var normalizedReason = NormalizeTrimmedValue(reason, nameof(reason), "Reason");
 
@@ -309,6 +309,27 @@ public sealed class CrewService : ICrewService
         if (normalized.Length > 128)
         {
             throw new CrewServiceException(CrewServiceFailureReason.InvalidRequest, $"{label} must be 128 characters or fewer.");
+        }
+
+        return normalized;
+    }
+
+    private static string NormalizeCurrencyCode(string currencyCode)
+    {
+        if (currencyCode is null)
+        {
+            throw new CrewServiceException(CrewServiceFailureReason.InvalidRequest, "Currency code is required.");
+        }
+
+        var normalized = currencyCode.Trim().ToUpperInvariant();
+        if (normalized.Length == 0)
+        {
+            throw new CrewServiceException(CrewServiceFailureReason.InvalidRequest, "Currency code is required.");
+        }
+
+        if (normalized.Length > 32)
+        {
+            throw new CrewServiceException(CrewServiceFailureReason.InvalidRequest, "Currency code must be 32 characters or fewer.");
         }
 
         return normalized;

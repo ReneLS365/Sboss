@@ -169,6 +169,31 @@ public sealed class CrewEndpointsTests
     }
 
     [Fact]
+    public async Task Payout_CurrencyCodeLongerThan32Chars_ReturnsValidationProblem()
+    {
+        await _database.ResetAsync();
+        await InsertAccountAsync(SvendAccountId);
+        using var factory = new TestWebApplicationFactory(_database.ConnectionString);
+        using var client = factory.CreateClient();
+        var createResponse = await client.PostAsJsonAsync("/api/v1/crews", new PostCreateCrewRequest(OwnerAccountId, "Crew Currency Validation"));
+        var createdCrew = await createResponse.Content.ReadFromJsonAsync<PostCreateCrewResponse>();
+        Assert.NotNull(createdCrew);
+        await client.PostAsJsonAsync(
+            $"/api/v1/crews/{createdCrew!.CrewId}/members",
+            new PostCrewMemberAssignmentRequest(OwnerAccountId, SvendAccountId, "Svend"));
+
+        var longCurrencyCode = new string('c', 33);
+        var payoutResponse = await client.PostAsJsonAsync(
+            $"/api/v1/crews/{createdCrew.CrewId}/payouts",
+            new PostCrewPayoutRequest(OwnerAccountId, 100, longCurrencyCode, "crew-long-currency", "contract_settlement"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, payoutResponse.StatusCode);
+        var problem = await payoutResponse.Content.ReadFromJsonAsync<HttpValidationProblemDetails>();
+        Assert.NotNull(problem);
+        Assert.True(problem!.Errors.ContainsKey("crewPayout"));
+    }
+
+    [Fact]
     public async Task Payout_ReplayStaysStableAfterMembershipChanges()
     {
         await _database.ResetAsync();
