@@ -350,7 +350,7 @@ public sealed class MatchResultsContractTests
             Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
             Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc"),
             seedId,
-            CreatePlacementIntents(seedId, "scaffold_blue_frame", "scaffold_blue_frame"),
+            CreatePlacementIntents(seedId, "scaffold_yellow_deck"),
             null);
 
         for (var i = 0; i < 5; i++)
@@ -361,11 +361,11 @@ public sealed class MatchResultsContractTests
 
         var yard = await client.GetFromJsonAsync<GetYardStateResponse>("/api/v1/yard/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
         Assert.NotNull(yard);
-        var blue = yard!.Inventory.Single(item => item.ItemCode == "scaffold_blue_frame");
-        Assert.Equal(3, blue.OwnedQuantity);
-        Assert.Equal(17500, blue.TotalIntegrityBps);
-        Assert.Equal(1, blue.UsableQuantity);
-        Assert.Equal(2, blue.DamagedQuantity);
+        var yellow = yard!.Inventory.Single(item => item.ItemCode == "scaffold_yellow_deck");
+        Assert.Equal(1, yellow.OwnedQuantity);
+        Assert.Equal(0, yellow.TotalIntegrityBps);
+        Assert.Equal(0, yellow.UsableQuantity);
+        Assert.Equal(1, yellow.DamagedQuantity);
     }
 
     private async Task SetInventoryQuantityAsync(Guid accountId, string itemCode, int quantity)
