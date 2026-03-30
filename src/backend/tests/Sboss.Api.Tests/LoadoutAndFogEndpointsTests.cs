@@ -149,8 +149,8 @@ public sealed class LoadoutAndFogEndpointsTests
         var submit = await client.PostAsJsonAsync($"/api/v1/loadout/{AccountId}/{SeedId}",
             new PostLoadoutSubmissionRequest(new[]
             {
-                new LoadoutItemRequest("scaffold_blue_frame", 1),
-                new LoadoutItemRequest("scaffold_yellow_deck", 1)
+                new LoadoutItemRequest("scaffold_yellow_deck", 1),
+                new LoadoutItemRequest("scaffold_red_diagonal", 1)
             }));
         Assert.Equal(HttpStatusCode.OK, submit.StatusCode);
 
@@ -163,7 +163,7 @@ public sealed class LoadoutAndFogEndpointsTests
                 new PlaceComponentIntent
                 {
                     SeedId = SeedId,
-                    ComponentId = "scaffold_red_diagonal",
+                    ComponentId = "scaffold_blue_frame",
                     Timestamp = new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero)
                 }
             },
@@ -187,8 +187,8 @@ public sealed class LoadoutAndFogEndpointsTests
         var submit = await client.PostAsJsonAsync($"/api/v1/loadout/{AccountId}/{SeedId}",
             new PostLoadoutSubmissionRequest(new[]
             {
-                new LoadoutItemRequest("scaffold_blue_frame", 1),
-                new LoadoutItemRequest("scaffold_yellow_deck", 1)
+                new LoadoutItemRequest("scaffold_yellow_deck", 1),
+                new LoadoutItemRequest("scaffold_red_diagonal", 1)
             }));
         Assert.Equal(HttpStatusCode.OK, submit.StatusCode);
 
@@ -201,13 +201,13 @@ public sealed class LoadoutAndFogEndpointsTests
                 new PlaceComponentIntent
                 {
                     SeedId = SeedId,
-                    ComponentId = "scaffold_red_diagonal",
+                    ComponentId = "scaffold_blue_frame",
                     Timestamp = new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero)
                 },
                 new PlaceComponentIntent
                 {
                     SeedId = SeedId,
-                    ComponentId = "scaffold_red_diagonal",
+                    ComponentId = "scaffold_blue_frame",
                     Timestamp = new DateTimeOffset(2026, 1, 1, 12, 0, 1, TimeSpan.Zero)
                 }
             },
