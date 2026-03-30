@@ -1,10 +1,10 @@
 # Sboss — Master Status (Lean MVP)
 
 ## Current Position
-- Current phase: **Phase 3 — Company & Meta-loop**
-- Completed phase: **Phase 2 — Core Gameplay Validation**
-- Current task: **3E — XP & Progression**
-- Next task: **4A — Leaderboard API**
+- Current phase: **Phase 4 — Asynchronous Competition**
+- Completed phase: **Phase 3 — Company & Meta-loop**
+- Current task: **4A — Leaderboard API**
+- Next task: **4B — Deterministisk Level Generator**
 - Future expansion phase: **Phase 6 — Real-Time Simulation Expansion**
 
 ---
@@ -12,7 +12,7 @@
 ## Status overview
 - [x] Phase 1 — Authoritative Core Domain (HTTP, DB, Economy Ledger)
 - [x] Phase 2 — Core Gameplay Validation (Command Queue, Unity RTS-kamera, Score-motor)
-- [ ] Phase 3 — Company & Meta-loop (Yard Inventory, Akkord-system, XP)
+- [x] Phase 3 — Company & Meta-loop (Yard Inventory, Akkord-system, XP)
 - [ ] Phase 4 — Asynchronous Competition (Leaderboards, Daily Challenges, Ghost Data)
 - [ ] Phase 5 — Release Prep (Anti-cheat, QA, Deployment)
 - [ ] Phase 6 — Real-Time Simulation Expansion (Live Session Runtime, Transport, Replication)
@@ -46,7 +46,7 @@ Fokus: Progression og økonomi (RTS-logistik).
 - [x] 3B Akkord & Crew Split: Enhedsstyring. Balancering af dyre svende (hastighed) mod billige lærlinge (XP). 60/40 profitdeling.
 - [x] 3C Wear & Tear System: Simuleret slitage ved fejlplaceringer (Materialeintegritet).
 - [x] 3D Loadout & Fog of War: Tidsbegrænset spatialt minigame for at pakke varevognen korrekt før opgaven låses.
-- [ ] 3E XP & Progression: Oplåsning af sværere bane-templates (f.eks. Offshore Rotationer).
+- [x] 3E XP & Progression: Oplåsning af sværere bane-templates (f.eks. Offshore Rotationer).
 
 ## Phase 4 — Asynchronous Competition
 Fokus: Territory Control og rivalisering uden synkron realtids-netkode.
