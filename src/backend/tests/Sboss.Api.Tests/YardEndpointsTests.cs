@@ -34,7 +34,13 @@ public sealed class YardEndpointsTests
         Assert.Equal(1491, body.RemainingCapacity);
         Assert.Equal(100, body.CoinBalance);
         Assert.Equal(3, body.Inventory.Count);
-        Assert.Contains(body.Inventory, item => item.ItemCode == "scaffold_blue_frame" && item.Quantity == 3);
+        Assert.Contains(body.Inventory, item =>
+            item.ItemCode == "scaffold_blue_frame" &&
+            item.Quantity == 3 &&
+            item.OwnedQuantity == 3 &&
+            item.UsableQuantity == 3 &&
+            item.DamagedQuantity == 0 &&
+            item.TotalIntegrityBps == 30000);
     }
 
     [Fact]
@@ -159,8 +165,31 @@ public sealed class YardEndpointsTests
         Assert.NotNull(yard);
         Assert.Equal(11, yard!.MaxCapacity);
         Assert.Equal(4, yard.Inventory.Single(item => item.ItemCode == "scaffold_blue_frame").Quantity);
+        Assert.Equal(4, yard.Inventory.Single(item => item.ItemCode == "scaffold_blue_frame").UsableQuantity);
         Assert.Equal(11, yard.UsedCapacity);
         Assert.Equal(0, yard.RemainingCapacity);
+    }
+
+    [Fact]
+    public async Task Purchase_AddsQuantityAndRestoresFullIntegrityForPurchasedUnits()
+    {
+        await _database.ResetAsync();
+        await SetInventoryIntegrityAsync(AccountId, "scaffold_blue_frame", 3, 17500);
+        using var factory = new TestWebApplicationFactory(_database.ConnectionString);
+        using var client = factory.CreateClient();
+
+        var purchase = await client.PostAsJsonAsync(
+            $"/api/v1/yard/{AccountId}/purchases",
+            new PostYardPurchaseRequest("scaffold_blue_frame", 1));
+        Assert.Equal(HttpStatusCode.OK, purchase.StatusCode);
+
+        var yard = await client.GetFromJsonAsync<GetYardStateResponse>($"/api/v1/yard/{AccountId}");
+        Assert.NotNull(yard);
+        var blue = yard!.Inventory.Single(item => item.ItemCode == "scaffold_blue_frame");
+        Assert.Equal(4, blue.OwnedQuantity);
+        Assert.Equal(27500, blue.TotalIntegrityBps);
+        Assert.Equal(2, blue.UsableQuantity);
+        Assert.Equal(2, blue.DamagedQuantity);
     }
 
     private async Task SetYardCapacityAsync(Guid accountId, int maxCapacity)
@@ -177,6 +206,27 @@ public sealed class YardEndpointsTests
             """;
         command.Parameters.AddWithValue("accountId", accountId);
         command.Parameters.AddWithValue("maxCapacity", maxCapacity);
+        await command.ExecuteNonQueryAsync();
+    }
+
+    private async Task SetInventoryIntegrityAsync(Guid accountId, string itemCode, int quantity, long totalIntegrityBps)
+    {
+        await using var connection = new NpgsqlConnection(_database.ConnectionString);
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE inventory_items
+            SET quantity = @quantity,
+                total_integrity_bps = @totalIntegrityBps,
+                updated_at = NOW(),
+                version = version + 1
+            WHERE account_id = @accountId
+              AND item_code = @itemCode;
+            """;
+        command.Parameters.AddWithValue("accountId", accountId);
+        command.Parameters.AddWithValue("itemCode", itemCode);
+        command.Parameters.AddWithValue("quantity", quantity);
+        command.Parameters.AddWithValue("totalIntegrityBps", totalIntegrityBps);
         await command.ExecuteNonQueryAsync();
     }
 }

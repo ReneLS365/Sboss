@@ -11,5 +11,9 @@ public sealed record GetYardStateResponse(
 public sealed record YardInventoryItemResponse(
     string ItemCode,
     int Quantity,
+    int OwnedQuantity,
+    int UsableQuantity,
+    int DamagedQuantity,
+    long TotalIntegrityBps,
     int UnitCapacity,
     long PurchaseCost);

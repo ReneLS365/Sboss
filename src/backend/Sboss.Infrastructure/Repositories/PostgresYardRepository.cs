@@ -7,6 +7,7 @@ namespace Sboss.Infrastructure.Repositories;
 public sealed class PostgresYardRepository : IYardRepository
 {
     private const int DefaultYardCapacity = 1500;
+    private const long IntegrityPerOwnedUnitBps = 10_000;
     private readonly NpgsqlDataSource _dataSource;
 
     public PostgresYardRepository(NpgsqlDataSource dataSource)
@@ -77,10 +78,11 @@ public sealed class PostgresYardRepository : IYardRepository
         }
 
         const string upsertInventorySql = """
-            INSERT INTO inventory_items (inventory_item_id, account_id, item_code, quantity, created_at, updated_at, version)
-            VALUES (gen_random_uuid(), @accountId, @itemCode, @quantity, NOW(), NOW(), 1)
+            INSERT INTO inventory_items (inventory_item_id, account_id, item_code, quantity, total_integrity_bps, created_at, updated_at, version)
+            VALUES (gen_random_uuid(), @accountId, @itemCode, @quantity, @totalIntegrityBps, NOW(), NOW(), 1)
             ON CONFLICT (account_id, item_code)
             DO UPDATE SET quantity = inventory_items.quantity + EXCLUDED.quantity,
+                          total_integrity_bps = inventory_items.total_integrity_bps + EXCLUDED.total_integrity_bps,
                           updated_at = NOW(),
                           version = inventory_items.version + 1;
             """;
@@ -90,6 +92,7 @@ public sealed class PostgresYardRepository : IYardRepository
             inventoryCommand.Parameters.AddWithValue("accountId", accountId);
             inventoryCommand.Parameters.AddWithValue("itemCode", component.ItemCode);
             inventoryCommand.Parameters.AddWithValue("quantity", quantity);
+            inventoryCommand.Parameters.AddWithValue("totalIntegrityBps", checked((long)quantity * IntegrityPerOwnedUnitBps));
             await inventoryCommand.ExecuteNonQueryAsync(cancellationToken);
         }
 
@@ -98,9 +101,46 @@ public sealed class PostgresYardRepository : IYardRepository
         return new PurchaseResult(true, null, null, updatedSnapshot, GetOwnedQuantity(updatedSnapshot!, component.ItemCode));
     }
 
+    public async Task ApplyWearAsync(Guid accountId, IReadOnlyDictionary<string, long> wearByItemCode, CancellationToken cancellationToken)
+    {
+        if (wearByItemCode.Count == 0)
+        {
+            return;
+        }
+
+        await using var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
+
+        const string applyWearSql = """
+            UPDATE inventory_items
+            SET total_integrity_bps = GREATEST(0, total_integrity_bps - @wearBps),
+                updated_at = NOW(),
+                version = version + 1
+            WHERE account_id = @accountId
+              AND item_code = @itemCode
+              AND quantity > 0;
+            """;
+
+        foreach (var entry in wearByItemCode)
+        {
+            if (entry.Value <= 0)
+            {
+                continue;
+            }
+
+            await using var command = new NpgsqlCommand(applyWearSql, connection, transaction);
+            command.Parameters.AddWithValue("accountId", accountId);
+            command.Parameters.AddWithValue("itemCode", entry.Key);
+            command.Parameters.AddWithValue("wearBps", entry.Value);
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+    }
+
     private static int GetOwnedQuantity(YardStateSnapshot snapshot, string itemCode)
     {
-        return snapshot.InventoryQuantities.TryGetValue(itemCode, out var quantity) ? quantity : 0;
+        return snapshot.InventoryByItemCode.TryGetValue(itemCode, out var item) ? item.OwnedQuantity : 0;
     }
 
     private static async Task EnsureYardStateAsync(NpgsqlConnection connection, NpgsqlTransaction? transaction, Guid accountId, CancellationToken cancellationToken)
@@ -167,22 +207,26 @@ public sealed class PostgresYardRepository : IYardRepository
         }
 
         const string inventorySql = """
-            SELECT item_code, quantity
+            SELECT item_code, quantity, total_integrity_bps
             FROM inventory_items
             WHERE account_id = @accountId;
             """;
 
-        var inventory = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var inventory = new Dictionary<string, YardInventoryState>(StringComparer.OrdinalIgnoreCase);
         await using var inventoryCommand = new NpgsqlCommand(inventorySql, connection, transaction);
         inventoryCommand.Parameters.AddWithValue("accountId", accountId);
         await using var inventoryReader = await inventoryCommand.ExecuteReaderAsync(cancellationToken);
         while (await inventoryReader.ReadAsync(cancellationToken))
         {
-            inventory[inventoryReader.GetString(0)] = inventoryReader.GetInt32(1);
+            var quantity = inventoryReader.GetInt32(1);
+            var totalIntegrityBps = inventoryReader.GetInt64(2);
+            var usableQuantity = Math.Clamp((int)(totalIntegrityBps / IntegrityPerOwnedUnitBps), 0, quantity);
+            var damagedQuantity = quantity - usableQuantity;
+            inventory[inventoryReader.GetString(0)] = new YardInventoryState(quantity, usableQuantity, damagedQuantity, totalIntegrityBps);
         }
 
         var capacityByItemCode = supportedComponents.ToDictionary(component => component.ItemCode, component => component.UnitCapacity, StringComparer.OrdinalIgnoreCase);
-        var usedCapacity = inventory.Sum(entry => capacityByItemCode.TryGetValue(entry.Key, out var unitCapacity) ? unitCapacity * entry.Value : 0);
+        var usedCapacity = inventory.Sum(entry => capacityByItemCode.TryGetValue(entry.Key, out var unitCapacity) ? unitCapacity * entry.Value.UsableQuantity : 0);
         var remainingCapacity = Math.Max(0, maxCapacity - usedCapacity);
         return new YardStateSnapshot(accountId, maxCapacity, usedCapacity, remainingCapacity, coinBalance, inventory);
     }
