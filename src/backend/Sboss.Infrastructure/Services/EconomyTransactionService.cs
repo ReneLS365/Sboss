@@ -8,6 +8,10 @@ namespace Sboss.Infrastructure.Services;
 public sealed class EconomyTransactionService : IEconomyTransactionService
 {
     private const string UniqueViolationSqlState = "23505";
+    private const string SerializationFailureSqlState = "40001";
+    private const string DeadlockDetectedSqlState = "40P01";
+    private const int BatchTransientRetryMaxAttempts = 3;
+    private static readonly TimeSpan BatchTransientRetryDelay = TimeSpan.FromMilliseconds(25);
     private const int BatchReplayResolveMaxAttempts = 40;
     private static readonly TimeSpan BatchReplayResolveRetryDelay = TimeSpan.FromMilliseconds(50);
     private readonly NpgsqlDataSource _dataSource;
@@ -71,27 +75,41 @@ public sealed class EconomyTransactionService : IEconomyTransactionService
 
         var normalizedRequests = requests.Select(NormalizeRequest).ToArray();
 
-        await using var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
-        await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
-
-        try
+        for (var attempt = 0; attempt < BatchTransientRetryMaxAttempts; attempt++)
         {
-            var results = new List<EconomyTransactionResult>(normalizedRequests.Length);
-            foreach (var normalizedRequest in normalizedRequests)
+            await using var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
+            await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
+
+            try
             {
-                var result = await ApplyInTransactionAsync(connection, transaction, normalizedRequest, cancellationToken);
-                results.Add(result);
-            }
+                var results = new List<EconomyTransactionResult>(normalizedRequests.Length);
+                foreach (var normalizedRequest in normalizedRequests)
+                {
+                    var result = await ApplyInTransactionAsync(connection, transaction, normalizedRequest, cancellationToken);
+                    results.Add(result);
+                }
 
-            await transaction.CommitAsync(cancellationToken);
-            return results;
+                await transaction.CommitAsync(cancellationToken);
+                return results;
+            }
+            catch (PostgresException exception) when (exception.SqlState == UniqueViolationSqlState)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return await ResolveBatchReplayResultsAsync(normalizedRequests, cancellationToken);
+            }
+            catch (PostgresException exception) when (IsTransientConcurrencyFailure(exception) && attempt < BatchTransientRetryMaxAttempts - 1)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                await Task.Delay(BatchTransientRetryDelay, cancellationToken);
+            }
         }
-        catch (PostgresException exception) when (exception.SqlState == UniqueViolationSqlState)
-        {
-            await transaction.RollbackAsync(cancellationToken);
-            return await ResolveBatchReplayResultsAsync(normalizedRequests, cancellationToken);
-        }
+
+        throw new InvalidOperationException("Batch retry loop ended unexpectedly without returning or throwing.");
     }
+
+    private static bool IsTransientConcurrencyFailure(PostgresException exception) =>
+        exception.SqlState == SerializationFailureSqlState ||
+        exception.SqlState == DeadlockDetectedSqlState;
 
     private async Task<IReadOnlyList<EconomyTransactionResult>> ResolveBatchReplayResultsAsync(
         IReadOnlyList<EconomyMutationRequest> normalizedRequests,

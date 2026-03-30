@@ -386,8 +386,16 @@ public sealed class CrewEndpointsTests
                 client.PostAsJsonAsync($"/api/v1/crews/{createdCrew.CrewId}/payouts", request),
                 client.PostAsJsonAsync($"/api/v1/crews/{createdCrew.CrewId}/payouts", request));
 
-            Assert.All(responses, response => Assert.NotEqual(HttpStatusCode.InternalServerError, response.StatusCode));
-            Assert.All(responses, response => Assert.Equal(HttpStatusCode.OK, response.StatusCode));
+            foreach (var response in responses)
+            {
+                var responseBody = await response.Content.ReadAsStringAsync();
+                Assert.NotEqual(
+                    HttpStatusCode.InternalServerError,
+                    response.StatusCode);
+                Assert.True(
+                    response.StatusCode == HttpStatusCode.OK,
+                    $"Expected HTTP 200 but got {(int)response.StatusCode} {response.StatusCode}. Body: {responseBody}");
+            }
         }
     }
 
