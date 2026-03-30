@@ -180,10 +180,6 @@ app.MapPost("/api/v1/match-results", async (
                         "inventory_insufficient",
                         $"Component '{component.ItemCode}' is not available in owned inventory.");
                 }
-                else
-                {
-                    inventoryRemainingByItem[component.ItemCode] = currentlyOwned - 1;
-                }
 
                 if (validation.Accepted && loadoutRemainingByItem is not null)
                 {
@@ -198,6 +194,11 @@ app.MapPost("/api/v1/match-results", async (
                     {
                         loadoutRemainingByItem[component.ItemCode] = currentlyLoaded - 1;
                     }
+                }
+
+                if (validation.Accepted)
+                {
+                    inventoryRemainingByItem[component.ItemCode] = currentlyOwned - 1;
                 }
             }
         }
@@ -458,13 +459,46 @@ app.MapPost("/api/v1/loadout/{accountId:guid}/{levelSeedId:guid}", async (
             return Results.ValidationProblem(new Dictionary<string, string[]> { ["items"] = new[] { $"Quantity must be non-negative for '{item.ItemCode}'." } });
         }
 
-        quantities[component.ItemCode] = quantities.TryGetValue(component.ItemCode, out var existing) ? existing + item.Quantity : item.Quantity;
+        var maxSafeCapacityQuantity = int.MaxValue / component.UnitCapacity;
+        if (item.Quantity > maxSafeCapacityQuantity)
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["items"] = new[] { $"Quantity is too large for safe capacity calculation for '{item.ItemCode}'." }
+            });
+        }
+
+        if (quantities.TryGetValue(component.ItemCode, out var existing))
+        {
+            if (existing > int.MaxValue - item.Quantity)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["items"] = new[] { $"Total quantity is too large for '{item.ItemCode}'." }
+                });
+            }
+
+            quantities[component.ItemCode] = existing + item.Quantity;
+        }
+        else
+        {
+            quantities[component.ItemCode] = item.Quantity;
+        }
     }
 
     foreach (var entry in quantities)
     {
         if (componentCatalog.TryGetComponent(entry.Key, out var component))
         {
+            var maxSafeCapacityQuantity = int.MaxValue / component.UnitCapacity;
+            if (entry.Value > maxSafeCapacityQuantity)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["items"] = new[] { $"Quantity is too large for safe capacity calculation for '{entry.Key}'." }
+                });
+            }
+
             usedCapacity = checked(usedCapacity + (component.UnitCapacity * entry.Value));
         }
     }

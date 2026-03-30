@@ -61,6 +61,21 @@ public sealed class LoadoutAndFogEndpointsTests
     }
 
     [Fact]
+    public async Task PostLoadout_OversizedQuantity_ReturnsValidationProblem()
+    {
+        await _database.ResetAsync();
+        var client = _factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync($"/api/v1/loadout/{AccountId}/{SeedId}",
+            new PostLoadoutSubmissionRequest(new[]
+            {
+                new LoadoutItemRequest("scaffold_red_diagonal", int.MaxValue)
+            }));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task PostLoadout_MissingRequiredComponent_IsIncomplete()
     {
         await _database.ResetAsync();
@@ -161,5 +176,53 @@ public sealed class LoadoutAndFogEndpointsTests
         Assert.NotNull(body);
         Assert.False(body!.ValidationResults[0].Accepted);
         Assert.Equal("loadout_missing_component", body.ValidationResults[0].Code);
+    }
+
+    [Fact]
+    public async Task MatchResults_RepeatedMissingLoadoutComponent_StaysLoadoutMissingWithoutInventoryConsumption()
+    {
+        await _database.ResetAsync();
+        var client = _factory.CreateClient();
+
+        var submit = await client.PostAsJsonAsync($"/api/v1/loadout/{AccountId}/{SeedId}",
+            new PostLoadoutSubmissionRequest(new[]
+            {
+                new LoadoutItemRequest("scaffold_blue_frame", 1),
+                new LoadoutItemRequest("scaffold_yellow_deck", 1)
+            }));
+        Assert.Equal(HttpStatusCode.OK, submit.StatusCode);
+
+        var request = new PostMatchResultRequest(
+            AccountId,
+            SeasonId,
+            SeedId,
+            new[]
+            {
+                new PlaceComponentIntent
+                {
+                    SeedId = SeedId,
+                    ComponentId = "scaffold_red_diagonal",
+                    Timestamp = new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero)
+                },
+                new PlaceComponentIntent
+                {
+                    SeedId = SeedId,
+                    ComponentId = "scaffold_red_diagonal",
+                    Timestamp = new DateTimeOffset(2026, 1, 1, 12, 0, 1, TimeSpan.Zero)
+                }
+            },
+            null);
+
+        var response = await client.PostAsJsonAsync("/api/v1/match-results", request);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var body = await response.Content.ReadFromJsonAsync<PostMatchResultResponse>();
+        Assert.NotNull(body);
+        Assert.Equal(2, body!.ValidationResults.Count);
+        Assert.All(body.ValidationResults, result =>
+        {
+            Assert.False(result.Accepted);
+            Assert.Equal("loadout_missing_component", result.Code);
+        });
     }
 }
