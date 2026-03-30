@@ -97,10 +97,17 @@ public sealed class EconomyTransactionService : IEconomyTransactionService
                 await transaction.RollbackAsync(cancellationToken);
                 return await ResolveBatchReplayResultsAsync(normalizedRequests, cancellationToken);
             }
-            catch (PostgresException exception) when (IsTransientConcurrencyFailure(exception) && attempt < BatchTransientRetryMaxAttempts - 1)
+            catch (PostgresException exception) when (IsTransientConcurrencyFailure(exception))
             {
                 await transaction.RollbackAsync(cancellationToken);
-                await Task.Delay(BatchTransientRetryDelay, cancellationToken);
+
+                if (attempt < BatchTransientRetryMaxAttempts - 1)
+                {
+                    await Task.Delay(BatchTransientRetryDelay, cancellationToken);
+                    continue;
+                }
+
+                return await ResolveBatchReplayResultsAsync(normalizedRequests, cancellationToken);
             }
         }
 

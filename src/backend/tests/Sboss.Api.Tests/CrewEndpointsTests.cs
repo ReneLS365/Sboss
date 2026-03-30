@@ -389,9 +389,6 @@ public sealed class CrewEndpointsTests
             foreach (var response in responses)
             {
                 var responseBody = await response.Content.ReadAsStringAsync();
-                Assert.NotEqual(
-                    HttpStatusCode.InternalServerError,
-                    response.StatusCode);
                 Assert.True(
                     response.StatusCode == HttpStatusCode.OK,
                     $"Expected HTTP 200 but got {(int)response.StatusCode} {response.StatusCode}. Body: {responseBody}");
