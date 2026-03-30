@@ -178,6 +178,11 @@ public sealed class CrewService : ICrewService
         string reason,
         CancellationToken cancellationToken)
     {
+        if (crewId == Guid.Empty)
+        {
+            throw new CrewServiceException(CrewServiceFailureReason.InvalidRequest, "Crew ID is required.");
+        }
+
         if (actorAccountId == Guid.Empty)
         {
             throw new CrewServiceException(CrewServiceFailureReason.InvalidRequest, "Actor account ID is required.");
