@@ -194,6 +194,52 @@ public sealed class CrewEndpointsTests
     }
 
     [Fact]
+    public async Task Payout_MaxLengthIdempotencyKeyThatOverflowsDerivedMutation_ReturnsValidationProblem()
+    {
+        await _database.ResetAsync();
+        await InsertAccountAsync(SvendAccountId);
+        using var factory = new TestWebApplicationFactory(_database.ConnectionString);
+        using var client = factory.CreateClient();
+        var createResponse = await client.PostAsJsonAsync("/api/v1/crews", new PostCreateCrewRequest(OwnerAccountId, "Crew Long Idempotency"));
+        var createdCrew = await createResponse.Content.ReadFromJsonAsync<PostCreateCrewResponse>();
+        Assert.NotNull(createdCrew);
+        await client.PostAsJsonAsync(
+            $"/api/v1/crews/{createdCrew!.CrewId}/members",
+            new PostCrewMemberAssignmentRequest(OwnerAccountId, SvendAccountId, "Svend"));
+
+        var maxClientIdempotency = new string('k', 128);
+        var payoutResponse = await client.PostAsJsonAsync(
+            $"/api/v1/crews/{createdCrew.CrewId}/payouts",
+            new PostCrewPayoutRequest(OwnerAccountId, 100, "COIN", maxClientIdempotency, "contract_settlement"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, payoutResponse.StatusCode);
+        Assert.Equal(0, await ReadPayoutSettlementCountAsync(createdCrew.CrewId, maxClientIdempotency));
+    }
+
+    [Fact]
+    public async Task Payout_MaxLengthReasonThatOverflowsDerivedMutation_ReturnsValidationProblem()
+    {
+        await _database.ResetAsync();
+        await InsertAccountAsync(SvendAccountId);
+        using var factory = new TestWebApplicationFactory(_database.ConnectionString);
+        using var client = factory.CreateClient();
+        var createResponse = await client.PostAsJsonAsync("/api/v1/crews", new PostCreateCrewRequest(OwnerAccountId, "Crew Long Reason"));
+        var createdCrew = await createResponse.Content.ReadFromJsonAsync<PostCreateCrewResponse>();
+        Assert.NotNull(createdCrew);
+        await client.PostAsJsonAsync(
+            $"/api/v1/crews/{createdCrew!.CrewId}/members",
+            new PostCrewMemberAssignmentRequest(OwnerAccountId, SvendAccountId, "Svend"));
+
+        var maxClientReason = new string('r', 128);
+        var payoutResponse = await client.PostAsJsonAsync(
+            $"/api/v1/crews/{createdCrew.CrewId}/payouts",
+            new PostCrewPayoutRequest(OwnerAccountId, 100, "COIN", "crew-long-reason", maxClientReason));
+
+        Assert.Equal(HttpStatusCode.BadRequest, payoutResponse.StatusCode);
+        Assert.Equal(0, await ReadPayoutSettlementCountAsync(createdCrew.CrewId, "crew-long-reason"));
+    }
+
+    [Fact]
     public async Task Payout_EmptyCrewId_ReturnsValidationProblem()
     {
         await _database.ResetAsync();
