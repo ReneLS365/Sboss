@@ -23,6 +23,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IContractJobRepository, PostgresContractJobRepository>();
         services.AddScoped<IContractJobApplicationRepository, PostgresContractJobApplicationRepository>();
         services.AddScoped<IYardRepository, PostgresYardRepository>();
+        services.AddScoped<ILoadoutRepository, PostgresLoadoutRepository>();
+        services.AddScoped<IFogOfWarRepository, PostgresFogOfWarRepository>();
         services.AddScoped<IEconomyTransactionService, EconomyTransactionService>();
         services.AddScoped<ICrewService, CrewService>();
         services.AddScoped<IContractJobTransitionService, ContractJobTransitionService>();
@@ -34,6 +36,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAuthoritativeYardCapacityProvider, AuthoritativeYardCapacityProvider>();
         services.AddScoped<IAuthoritativeComponentCapacityProvider, AuthoritativeComponentCapacityProvider>();
         services.AddScoped<IAuthoritativeComponentCatalog, AuthoritativeComponentCatalog>();
+        services.AddScoped<IAuthoritativeLoadoutRequirementProvider, AuthoritativeLoadoutRequirementProvider>();
         return services;
     }
 }

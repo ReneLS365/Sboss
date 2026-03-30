@@ -10,6 +10,8 @@ using Sboss.Contracts.ContractJobs;
 using Sboss.Contracts.ContractJobApplications;
 using Sboss.Contracts.Yard;
 using Sboss.Contracts.Crews;
+using Sboss.Contracts.Loadout;
+using Sboss.Contracts.FogOfWar;
 using Sboss.Domain.Entities;
 using Sboss.Infrastructure;
 using Sboss.Infrastructure.Repositories;
@@ -56,6 +58,7 @@ app.MapPost("/api/v1/match-results", async (
     IAuthoritativeYardCapacityProvider yardCapacityProvider,
     IAuthoritativeComponentCapacityProvider componentCapacityProvider,
     IYardRepository yardRepository,
+    ILoadoutRepository loadoutRepository,
     IAuthoritativeComponentCatalog componentCatalog,
     IScoringEngine scoringEngine,
     IMatchResultValidationService validator,
@@ -126,6 +129,11 @@ app.MapPost("/api/v1/match-results", async (
         entry => entry.Key,
         entry => entry.Value.UsableQuantity,
         StringComparer.OrdinalIgnoreCase);
+    var approvedLoadout = await loadoutRepository.GetAsync(request.AccountId, request.LevelSeedId, cancellationToken);
+    var loadoutRemainingByItem = approvedLoadout?.QuantitiesByItemCode.ToDictionary(
+        entry => entry.Key,
+        entry => entry.Value,
+        StringComparer.OrdinalIgnoreCase);
     var wearByItemCode = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
     var validationResults = new List<CommandValidationResult>(request.PlacementIntents.Count);
     var acceptedComponentIdsInSequence = new List<string>(request.PlacementIntents.Count);
@@ -175,6 +183,21 @@ app.MapPost("/api/v1/match-results", async (
                 else
                 {
                     inventoryRemainingByItem[component.ItemCode] = currentlyOwned - 1;
+                }
+
+                if (validation.Accepted && loadoutRemainingByItem is not null)
+                {
+                    var currentlyLoaded = loadoutRemainingByItem.TryGetValue(component.ItemCode, out var loaded) ? loaded : 0;
+                    if (currentlyLoaded <= 0)
+                    {
+                        validation = CommandValidationResult.Reject(
+                            "loadout_missing_component",
+                            $"Component '{component.ItemCode}' is not available in the approved loadout.");
+                    }
+                    else
+                    {
+                        loadoutRemainingByItem[component.ItemCode] = currentlyLoaded - 1;
+                    }
                 }
             }
         }
@@ -356,6 +379,153 @@ app.MapPost("/api/v1/yard/{accountId:guid}/purchases", async (
         snapshot.UsedCapacity,
         snapshot.RemainingCapacity,
         result.OwnedQuantity));
+});
+
+app.MapGet("/api/v1/loadout/{accountId:guid}/{levelSeedId:guid}", async (
+    Guid accountId,
+    Guid levelSeedId,
+    ILoadoutRepository loadoutRepository,
+    IAuthoritativeLoadoutRequirementProvider requirementProvider,
+    CancellationToken cancellationToken) =>
+{
+    var snapshot = await loadoutRepository.GetAsync(accountId, levelSeedId, cancellationToken);
+    if (snapshot is null)
+    {
+        return Results.Ok(new GetLoadoutStateResponse(
+            accountId,
+            levelSeedId,
+            0,
+            0,
+            false,
+            Array.Empty<LoadoutItemResponse>(),
+            requirementProvider.GetRequiredItemQuantities(levelSeedId).Keys.OrderBy(key => key, StringComparer.OrdinalIgnoreCase).ToArray()));
+    }
+
+    var missing = GetMissingRequiredComponents(snapshot.QuantitiesByItemCode, requirementProvider.GetRequiredItemQuantities(levelSeedId));
+    return Results.Ok(new GetLoadoutStateResponse(
+        snapshot.AccountId,
+        snapshot.LevelSeedId,
+        snapshot.MaxCapacity,
+        snapshot.UsedCapacity,
+        snapshot.IsComplete,
+        snapshot.QuantitiesByItemCode
+            .OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(pair => new LoadoutItemResponse(pair.Key, pair.Value))
+            .ToArray(),
+        missing));
+});
+
+app.MapPost("/api/v1/loadout/{accountId:guid}/{levelSeedId:guid}", async (
+    Guid accountId,
+    Guid levelSeedId,
+    PostLoadoutSubmissionRequest request,
+    ILoadoutRepository loadoutRepository,
+    ILevelSeedRepository levelSeedRepository,
+    IAccountRepository accountRepository,
+    IAuthoritativeComponentCatalog componentCatalog,
+    IAuthoritativeLoadoutRequirementProvider requirementProvider,
+    CancellationToken cancellationToken) =>
+{
+    var account = await accountRepository.GetByIdAsync(accountId, cancellationToken);
+    var levelSeed = await levelSeedRepository.GetByIdAsync(levelSeedId, cancellationToken);
+    if (account is null || levelSeed is null)
+    {
+        return Results.NotFound(new { error = "Account or level seed does not exist." });
+    }
+
+    if (request.Items is null || request.Items.Count == 0)
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]> { ["items"] = new[] { "At least one loadout item is required." } });
+    }
+
+    const int maxCapacity = 10;
+    var quantities = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+    var usedCapacity = 0;
+    foreach (var item in request.Items)
+    {
+        if (item is null || string.IsNullOrWhiteSpace(item.ItemCode))
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["items"] = new[] { "Each loadout item requires itemCode." } });
+        }
+
+        if (!componentCatalog.TryGetComponent(item.ItemCode, out var component))
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["items"] = new[] { $"Unknown itemCode '{item.ItemCode}'." } });
+        }
+
+        if (item.Quantity < 0)
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["items"] = new[] { $"Quantity must be non-negative for '{item.ItemCode}'." } });
+        }
+
+        quantities[component.ItemCode] = quantities.TryGetValue(component.ItemCode, out var existing) ? existing + item.Quantity : item.Quantity;
+    }
+
+    foreach (var entry in quantities)
+    {
+        if (componentCatalog.TryGetComponent(entry.Key, out var component))
+        {
+            usedCapacity = checked(usedCapacity + (component.UnitCapacity * entry.Value));
+        }
+    }
+
+    if (usedCapacity > maxCapacity)
+    {
+        return Results.BadRequest(new { error = "loadout_capacity_exceeded", maxCapacity, usedCapacity });
+    }
+
+    var required = requirementProvider.GetRequiredItemQuantities(levelSeedId);
+    var missingRequired = GetMissingRequiredComponents(quantities, required);
+    var isComplete = missingRequired.Count == 0;
+    var persisted = await loadoutRepository.UpsertAsync(
+        new LoadoutSnapshot(accountId, levelSeedId, maxCapacity, usedCapacity, isComplete, quantities),
+        cancellationToken);
+
+    return Results.Ok(new PostLoadoutSubmissionResponse(
+        persisted.AccountId,
+        persisted.LevelSeedId,
+        persisted.MaxCapacity,
+        persisted.UsedCapacity,
+        persisted.IsComplete,
+        isComplete ? "accepted" : "incomplete",
+        missingRequired,
+        persisted.QuantitiesByItemCode
+            .OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(pair => new LoadoutItemResponse(pair.Key, pair.Value))
+            .ToArray()));
+});
+
+app.MapGet("/api/v1/fog/{accountId:guid}/{levelSeedId:guid}", async (
+    Guid accountId,
+    Guid levelSeedId,
+    IFogOfWarRepository fogRepository,
+    CancellationToken cancellationToken) =>
+{
+    var revealed = await fogRepository.GetRevealedKeysAsync(accountId, levelSeedId, cancellationToken);
+    return Results.Ok(new GetFogStateResponse(accountId, levelSeedId, revealed.OrderBy(key => key, StringComparer.OrdinalIgnoreCase).ToArray()));
+});
+
+app.MapPost("/api/v1/fog/{accountId:guid}/{levelSeedId:guid}/reveal", async (
+    Guid accountId,
+    Guid levelSeedId,
+    PostFogRevealRequest request,
+    IFogOfWarRepository fogRepository,
+    CancellationToken cancellationToken) =>
+{
+    if (string.IsNullOrWhiteSpace(request.RevealKey))
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]> { ["revealKey"] = new[] { "RevealKey is required." } });
+    }
+
+    var normalizedRevealKey = request.RevealKey.Trim().ToLowerInvariant();
+    var inserted = await fogRepository.RevealAsync(accountId, levelSeedId, normalizedRevealKey, DateTimeOffset.UtcNow, cancellationToken);
+    var revealed = await fogRepository.GetRevealedKeysAsync(accountId, levelSeedId, cancellationToken);
+    return Results.Ok(new PostFogRevealResponse(
+        accountId,
+        levelSeedId,
+        normalizedRevealKey,
+        inserted ? "revealed" : "already_revealed",
+        revealed.OrderBy(key => key, StringComparer.OrdinalIgnoreCase).ToArray()));
 });
 
 app.MapPost("/api/v1/economy/transactions", async (
@@ -759,5 +929,20 @@ static GetCrewSplitPreviewResponse MapCrewSplitPreview(CrewSplitResult result) =
 
 static CrewMemberBreakdownResponse MapCrewMemberBreakdown(CrewSplitMemberResult member) =>
     new(member.AccountId, member.Role.ToString(), member.RatioWeight, member.Amount);
+
+static IReadOnlyList<string> GetMissingRequiredComponents(
+    IReadOnlyDictionary<string, int> quantitiesByItemCode,
+    IReadOnlyDictionary<string, int> requiredByItemCode)
+{
+    return requiredByItemCode
+        .Where(requirement =>
+        {
+            var loaded = quantitiesByItemCode.TryGetValue(requirement.Key, out var quantity) ? quantity : 0;
+            return loaded < requirement.Value;
+        })
+        .Select(requirement => requirement.Key)
+        .OrderBy(itemCode => itemCode, StringComparer.OrdinalIgnoreCase)
+        .ToArray();
+}
 
 public partial class Program;
