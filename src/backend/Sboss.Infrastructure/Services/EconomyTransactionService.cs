@@ -72,15 +72,55 @@ public sealed class EconomyTransactionService : IEconomyTransactionService
         await using var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
 
-        var results = new List<EconomyTransactionResult>(normalizedRequests.Length);
+        try
+        {
+            var results = new List<EconomyTransactionResult>(normalizedRequests.Length);
+            foreach (var normalizedRequest in normalizedRequests)
+            {
+                var result = await ApplyInTransactionAsync(connection, transaction, normalizedRequest, cancellationToken);
+                results.Add(result);
+            }
+
+            await transaction.CommitAsync(cancellationToken);
+            return results;
+        }
+        catch (PostgresException exception) when (exception.SqlState == UniqueViolationSqlState)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            return await ResolveBatchReplayResultsAsync(normalizedRequests, cancellationToken);
+        }
+    }
+
+    private async Task<IReadOnlyList<EconomyTransactionResult>> ResolveBatchReplayResultsAsync(
+        IReadOnlyList<EconomyMutationRequest> normalizedRequests,
+        CancellationToken cancellationToken)
+    {
+        await using var replayConnection = await _dataSource.OpenConnectionAsync(cancellationToken);
+        await using var replayTransaction = await replayConnection.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
+
+        var replayResults = new List<EconomyTransactionResult>(normalizedRequests.Count);
         foreach (var normalizedRequest in normalizedRequests)
         {
-            var result = await ApplyInTransactionAsync(connection, transaction, normalizedRequest, cancellationToken);
-            results.Add(result);
+            var replayTransactionRecord = await GetTransactionByIdempotencyKeyAsync(
+                replayConnection,
+                replayTransaction,
+                normalizedRequest.AccountId,
+                normalizedRequest.IdempotencyKey,
+                cancellationToken);
+
+            if (replayTransactionRecord is null)
+            {
+                throw new EconomyTransactionServiceException(
+                    EconomyTransactionFailureReason.Conflict,
+                    "Batch idempotency replay could not be resolved because at least one mutation record is missing.");
+            }
+
+            EnsureReplayIntentMatches(normalizedRequest, replayTransactionRecord);
+            replayResults.Add(new EconomyTransactionResult(replayTransactionRecord, CreateReplayBalanceSnapshot(replayTransactionRecord), true));
         }
 
-        await transaction.CommitAsync(cancellationToken);
-        return results;
+        await replayTransaction.CommitAsync(cancellationToken);
+        return replayResults;
     }
 
     private static EconomyMutationRequest NormalizeRequest(EconomyMutationRequest request)
