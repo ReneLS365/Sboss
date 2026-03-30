@@ -289,6 +289,28 @@ public sealed class CrewEndpointsTests
     }
 
     [Fact]
+    public async Task Payout_InvalidMutationValidation_DoesNotPersistSettlementSnapshot()
+    {
+        await _database.ResetAsync();
+        await InsertAccountAsync(SvendAccountId);
+        using var factory = new TestWebApplicationFactory(_database.ConnectionString);
+        using var client = factory.CreateClient();
+        var createResponse = await client.PostAsJsonAsync("/api/v1/crews", new PostCreateCrewRequest(OwnerAccountId, "Crew Invalid Mutation"));
+        var createdCrew = await createResponse.Content.ReadFromJsonAsync<PostCreateCrewResponse>();
+        Assert.NotNull(createdCrew);
+        await client.PostAsJsonAsync(
+            $"/api/v1/crews/{createdCrew!.CrewId}/members",
+            new PostCrewMemberAssignmentRequest(OwnerAccountId, SvendAccountId, "Svend"));
+
+        var payoutResponse = await client.PostAsJsonAsync(
+            $"/api/v1/crews/{createdCrew.CrewId}/payouts",
+            new PostCrewPayoutRequest(OwnerAccountId, 1, "COIN", "crew-invalid-mutation", "contract_settlement"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, payoutResponse.StatusCode);
+        Assert.Equal(0, await ReadPayoutSettlementCountAsync(createdCrew.CrewId, "crew-invalid-mutation"));
+    }
+
+    [Fact]
     public async Task Payout_ConcurrentReplay_DoesNotReturnInternalServerError()
     {
         await _database.ResetAsync();
@@ -388,5 +410,20 @@ public sealed class CrewEndpointsTests
             """;
         command.Parameters.AddWithValue("accountId", accountId);
         return Convert.ToInt64(await command.ExecuteScalarAsync() ?? 0L);
+    }
+
+    private async Task<int> ReadPayoutSettlementCountAsync(Guid crewId, string idempotencyKey)
+    {
+        await using var connection = new NpgsqlConnection(_database.ConnectionString);
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT COUNT(*)
+            FROM crew_payout_settlements
+            WHERE crew_id = @crewId AND idempotency_key = @idempotencyKey;
+            """;
+        command.Parameters.AddWithValue("crewId", crewId);
+        command.Parameters.AddWithValue("idempotencyKey", idempotencyKey);
+        return Convert.ToInt32(await command.ExecuteScalarAsync());
     }
 }

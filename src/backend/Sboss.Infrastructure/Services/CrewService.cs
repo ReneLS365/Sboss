@@ -201,6 +201,7 @@ public sealed class CrewService : ICrewService
         var existingSettlement = await GetPayoutSettlementAsync(connection, transaction, crewId, normalizedIdempotencyKey, cancellationToken);
         CrewSplitResult split;
         CrewPayoutSettlement settlement;
+        IReadOnlyList<EconomyMutationRequest> payoutMutations;
 
         if (existingSettlement is not null)
         {
@@ -216,25 +217,24 @@ public sealed class CrewService : ICrewService
                     .Select(member => new CrewSplitMemberResult(member.AccountId, member.Role, member.RoleWeight, member.Amount))
                     .ToArray());
             settlement = existingSettlement;
+            payoutMutations = BuildPayoutMutations(settlement, split, crewId);
         }
         else
         {
             var members = await GetCrewMembersAsync(connection, transaction, crew.CrewId, cancellationToken);
             split = CalculateSplit(crew.CrewId, grossAmount, members);
-            settlement = await InsertPayoutSettlementAsync(
-                connection,
-                transaction,
+            settlement = CreatePayoutSettlementSnapshot(
                 crew,
                 split,
                 normalizedCurrencyCode,
                 normalizedIdempotencyKey,
-                normalizedReason,
-                cancellationToken);
+                normalizedReason);
+            payoutMutations = BuildPayoutMutations(settlement, split, crewId);
+            EnsurePayoutMutationsAreValid(payoutMutations);
+            await InsertPayoutSettlementAsync(connection, transaction, settlement, cancellationToken);
         }
 
         await transaction.CommitAsync(cancellationToken);
-
-        var payoutMutations = BuildPayoutMutations(settlement, split, crewId);
 
         await _economyTransactionService.ApplyBatchAsync(payoutMutations, cancellationToken);
 
@@ -365,6 +365,16 @@ public sealed class CrewService : ICrewService
         return payoutMutations;
     }
 
+    private static void EnsurePayoutMutationsAreValid(IReadOnlyList<EconomyMutationRequest> mutations)
+    {
+        if (mutations.Count == 0 || mutations.Any(mutation => mutation.AmountDelta == 0))
+        {
+            throw new CrewServiceException(
+                CrewServiceFailureReason.InvalidRequest,
+                "Gross amount must produce non-zero payout mutations for all settlement entries.");
+        }
+    }
+
     private static void EnsurePayoutReplayIntentMatches(
         CrewPayoutSettlement settlement,
         Guid crewId,
@@ -447,17 +457,35 @@ public sealed class CrewService : ICrewService
         return settlement with { MemberSettlements = memberSettlements };
     }
 
-    private static async Task<CrewPayoutSettlement> InsertPayoutSettlementAsync(
-        NpgsqlConnection connection,
-        NpgsqlTransaction transaction,
+    private static CrewPayoutSettlement CreatePayoutSettlementSnapshot(
         Crew crew,
         CrewSplitResult split,
         string currencyCode,
         string idempotencyKey,
-        string reason,
-        CancellationToken cancellationToken)
+        string reason)
     {
         var createdAt = DateTimeOffset.UtcNow;
+        return new CrewPayoutSettlement(
+            crew.CrewId,
+            crew.OwnerAccountId,
+            idempotencyKey,
+            currencyCode,
+            reason,
+            split.GrossAmount,
+            split.CrewShareRatioBps,
+            split.CrewShareAmount,
+            split.CompanyShareAmount,
+            createdAt,
+            split.Members.Select(member =>
+                new CrewPayoutMemberSettlement(member.AccountId, member.Role, member.RatioWeight, member.Amount)).ToArray());
+    }
+
+    private static async Task InsertPayoutSettlementAsync(
+        NpgsqlConnection connection,
+        NpgsqlTransaction transaction,
+        CrewPayoutSettlement settlement,
+        CancellationToken cancellationToken)
+    {
         const string settlementSql = """
             INSERT INTO crew_payout_settlements (
                 crew_id,
@@ -485,16 +513,16 @@ public sealed class CrewService : ICrewService
 
         await using (var settlementCommand = new NpgsqlCommand(settlementSql, connection, transaction))
         {
-            settlementCommand.Parameters.AddWithValue("crewId", crew.CrewId);
-            settlementCommand.Parameters.AddWithValue("ownerAccountId", crew.OwnerAccountId);
-            settlementCommand.Parameters.AddWithValue("idempotencyKey", idempotencyKey);
-            settlementCommand.Parameters.AddWithValue("currencyCode", currencyCode);
-            settlementCommand.Parameters.AddWithValue("reason", reason);
-            settlementCommand.Parameters.AddWithValue("grossAmount", split.GrossAmount);
-            settlementCommand.Parameters.AddWithValue("crewShareRatioBps", split.CrewShareRatioBps);
-            settlementCommand.Parameters.AddWithValue("crewShareAmount", split.CrewShareAmount);
-            settlementCommand.Parameters.AddWithValue("companyShareAmount", split.CompanyShareAmount);
-            settlementCommand.Parameters.AddWithValue("createdAt", createdAt);
+            settlementCommand.Parameters.AddWithValue("crewId", settlement.CrewId);
+            settlementCommand.Parameters.AddWithValue("ownerAccountId", settlement.OwnerAccountId);
+            settlementCommand.Parameters.AddWithValue("idempotencyKey", settlement.IdempotencyKey);
+            settlementCommand.Parameters.AddWithValue("currencyCode", settlement.CurrencyCode);
+            settlementCommand.Parameters.AddWithValue("reason", settlement.Reason);
+            settlementCommand.Parameters.AddWithValue("grossAmount", settlement.GrossAmount);
+            settlementCommand.Parameters.AddWithValue("crewShareRatioBps", settlement.CrewShareRatioBps);
+            settlementCommand.Parameters.AddWithValue("crewShareAmount", settlement.CrewShareAmount);
+            settlementCommand.Parameters.AddWithValue("companyShareAmount", settlement.CompanyShareAmount);
+            settlementCommand.Parameters.AddWithValue("createdAt", settlement.CreatedAt);
             await settlementCommand.ExecuteNonQueryAsync(cancellationToken);
         }
 
@@ -515,31 +543,17 @@ public sealed class CrewService : ICrewService
                 @amount);
             """;
 
-        foreach (var member in split.Members)
+        foreach (var member in settlement.MemberSettlements)
         {
             await using var membersCommand = new NpgsqlCommand(membersSql, connection, transaction);
-            membersCommand.Parameters.AddWithValue("crewId", crew.CrewId);
-            membersCommand.Parameters.AddWithValue("idempotencyKey", idempotencyKey);
+            membersCommand.Parameters.AddWithValue("crewId", settlement.CrewId);
+            membersCommand.Parameters.AddWithValue("idempotencyKey", settlement.IdempotencyKey);
             membersCommand.Parameters.AddWithValue("accountId", member.AccountId);
             membersCommand.Parameters.AddWithValue("role", member.Role.ToString());
-            membersCommand.Parameters.AddWithValue("roleWeight", member.RatioWeight);
+            membersCommand.Parameters.AddWithValue("roleWeight", member.RoleWeight);
             membersCommand.Parameters.AddWithValue("amount", member.Amount);
             await membersCommand.ExecuteNonQueryAsync(cancellationToken);
         }
-
-        return new CrewPayoutSettlement(
-            crew.CrewId,
-            crew.OwnerAccountId,
-            idempotencyKey,
-            currencyCode,
-            reason,
-            split.GrossAmount,
-            split.CrewShareRatioBps,
-            split.CrewShareAmount,
-            split.CompanyShareAmount,
-            createdAt,
-            split.Members.Select(member =>
-                new CrewPayoutMemberSettlement(member.AccountId, member.Role, member.RatioWeight, member.Amount)).ToArray());
     }
 
     private sealed record CrewPayoutSettlement(
