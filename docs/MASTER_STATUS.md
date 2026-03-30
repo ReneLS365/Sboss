@@ -3,8 +3,8 @@
 ## Current Position
 - Current phase: **Phase 3 — Company & Meta-loop**
 - Completed phase: **Phase 2 — Core Gameplay Validation**
-- Current task: **3D — Loadout & Fog of War**
-- Next task: **3E — XP & Progression**
+- Current task: **3E — XP & Progression**
+- Next task: **4A — Leaderboard API**
 - Future expansion phase: **Phase 6 — Real-Time Simulation Expansion**
 
 ---
@@ -45,7 +45,7 @@ Fokus: Progression og økonomi (RTS-logistik).
 - [x] 3A Yard Capacity & Inventory: Begrænset lagerplads, køb af stilladsdele. Hard-cap blokerer store events.
 - [x] 3B Akkord & Crew Split: Enhedsstyring. Balancering af dyre svende (hastighed) mod billige lærlinge (XP). 60/40 profitdeling.
 - [x] 3C Wear & Tear System: Simuleret slitage ved fejlplaceringer (Materialeintegritet).
-- [ ] 3D Loadout & Fog of War: Tidsbegrænset spatialt minigame for at pakke varevognen korrekt før opgaven låses.
+- [x] 3D Loadout & Fog of War: Tidsbegrænset spatialt minigame for at pakke varevognen korrekt før opgaven låses.
 - [ ] 3E XP & Progression: Oplåsning af sværere bane-templates (f.eks. Offshore Rotationer).
 
 ## Phase 4 — Asynchronous Competition
