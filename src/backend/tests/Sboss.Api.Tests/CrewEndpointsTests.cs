@@ -132,7 +132,7 @@ public sealed class CrewEndpointsTests
         var response = await client.PostAsJsonAsync("/api/v1/crews", new PostCreateCrewRequest(Guid.Empty, " "));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        var problem = await response.Content.ReadFromJsonAsync<HttpValidationProblemDetails>();
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
         Assert.NotNull(problem);
         Assert.True(problem!.Errors.ContainsKey("crew"));
     }
@@ -163,7 +163,7 @@ public sealed class CrewEndpointsTests
         var payoutResponse = await client.PostAsync($"/api/v1/crews/{createdCrew.CrewId}/payouts", content);
 
         Assert.Equal(HttpStatusCode.BadRequest, payoutResponse.StatusCode);
-        var problem = await payoutResponse.Content.ReadFromJsonAsync<HttpValidationProblemDetails>();
+        var problem = await payoutResponse.Content.ReadFromJsonAsync<ValidationProblemDetails>();
         Assert.NotNull(problem);
         Assert.True(problem!.Errors.ContainsKey("crewPayout"));
     }
@@ -188,7 +188,7 @@ public sealed class CrewEndpointsTests
             new PostCrewPayoutRequest(OwnerAccountId, 100, longCurrencyCode, "crew-long-currency", "contract_settlement"));
 
         Assert.Equal(HttpStatusCode.BadRequest, payoutResponse.StatusCode);
-        var problem = await payoutResponse.Content.ReadFromJsonAsync<HttpValidationProblemDetails>();
+        var problem = await payoutResponse.Content.ReadFromJsonAsync<ValidationProblemDetails>();
         Assert.NotNull(problem);
         Assert.True(problem!.Errors.ContainsKey("crewPayout"));
     }
@@ -206,7 +206,7 @@ public sealed class CrewEndpointsTests
             new PostCrewPayoutRequest(OwnerAccountId, 100, "COIN", "crew-empty-id", "contract_settlement"));
 
         Assert.Equal(HttpStatusCode.BadRequest, payoutResponse.StatusCode);
-        var problem = await payoutResponse.Content.ReadFromJsonAsync<HttpValidationProblemDetails>();
+        var problem = await payoutResponse.Content.ReadFromJsonAsync<ValidationProblemDetails>();
         Assert.NotNull(problem);
         Assert.True(problem!.Errors.ContainsKey("crewPayout"));
     }
